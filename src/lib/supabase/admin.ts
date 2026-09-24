@@ -1,5 +1,6 @@
 import 'server-only';
 import { createClient } from '@supabase/supabase-js';
+import type { Database } from './database.types';
 import { SUPABASE_URL } from './env';
 
 /**
@@ -9,7 +10,7 @@ import { SUPABASE_URL } from './env';
 export function criarClienteAdmin() {
   const chave = process.env.SUPABASE_SECRET_KEY;
   if (!chave) throw new Error('Variável de ambiente ausente: SUPABASE_SECRET_KEY');
-  return createClient(SUPABASE_URL, chave, {
+  return createClient<Database>(SUPABASE_URL, chave, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }

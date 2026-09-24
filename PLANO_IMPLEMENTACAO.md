@@ -241,8 +241,9 @@ A troca de link (revogar o anterior + criar o novo) é feita numa função SQL `
 
 | Método | Endpoint | Auth |
 |---|---|---|
-| POST | `/api/importacoes` `{ arquivoNome, totalLinhas }` → cria a importação | funcionário |
-| POST | `/api/importacoes/[id]/lote` `{ linhas[], dryRun }` (≤ 200 linhas) | funcionário |
+| POST | `/api/importacoes/previa` `{ inicio, linhas[] }` (≤ 200 linhas) → o que aconteceria com cada linha, sem gravar | funcionário |
+| POST | `/api/importacoes` `{ arquivoNome, totalLinhas }` → cria a importação (na confirmação) | funcionário |
+| POST | `/api/importacoes/[id]/lote` `{ inicio, linhas[] }` (≤ 200 linhas) → grava (upsert por `rd_id`) | funcionário |
 | POST | `/api/fichas` `{ clienteId }` → cria ficha (snapshot dos dados) | funcionário |
 | POST | `/api/fichas/[id]/link` → retorna URL com token (mostrada uma vez) | funcionário |
 | DELETE | `/api/fichas/[id]/link` → revoga | funcionário |
@@ -352,7 +353,7 @@ A ficha contém **dados pessoais sensíveis** (saúde, CPF, passaporte).
 │   │   ├── f/[token]/page.tsx
 │   │   └── api/
 │   │       ├── importacoes/route.ts
-│   │       ├── importacoes/[id]/lote/route.ts
+│   │       ├── importacoes/{previa,[id]/lote}/route.ts
 │   │       ├── fichas/route.ts
 │   │       ├── fichas/[id]/{link,pdf,status}/route.ts
 │   │       ├── fichas/lote/route.ts

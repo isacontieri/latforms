@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Marca } from '@/components/Marca';
 import { verificarFuncionario } from '@/lib/auth';
@@ -36,7 +37,13 @@ export default async function LayoutAdmin({ children }: LayoutProps<'/admin'>) {
     <div className="flex flex-1 flex-col">
       <header className="border-b border-campo">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4">
-          <Marca titulo="LatForms" />
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
+            <Marca titulo="LatForms" />
+            <nav className="flex gap-4 text-sm">
+              <Link href="/admin" className="hover:text-laranja">Clientes</Link>
+              <Link href="/admin/importar" className="hover:text-laranja">Importar CSV</Link>
+            </nav>
+          </div>
           <div className="flex items-center gap-4 text-sm">
             <span>{auth.funcionario.nome}</span>
             <BotaoSair />
