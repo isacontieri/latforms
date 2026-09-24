@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+/* Identidade da Ficha de Cadastro Latitudes (cores medidas no template PDF) */
+@theme inline {
+  --color-laranja: #e8912d;
+  --color-laranja-escuro: #c9761a;
+  --color-campo: #cfd6da;
+  --color-texto: #171715;
+  --color-fundo: #ffffff;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--color-fundo);
+  color: var(--color-texto);
+}
