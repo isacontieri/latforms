@@ -4,13 +4,14 @@ import { notFound, redirect } from 'next/navigation';
 import { verificarFuncionario } from '@/lib/auth';
 import { mapearParaFicha } from '@/lib/ficha/mapping';
 import { DadosFichaSchema, type DadosFicha } from '@/lib/ficha/schema';
-import { ROTULO_STATUS, aceitaDadosDoRd } from '@/lib/ficha/status';
+import { ROTULO_STATUS, aceitaDadosDoRd, proximoStatus } from '@/lib/ficha/status';
 import { jsonIgual } from '@/lib/importacao/lote';
 import { COLUNAS_RD, type ChaveRd, type ColunaRd, type Grupo, type ValorCampo } from '@/lib/rd/colunas';
 import type { DadosRd } from '@/lib/rd/extrair';
 import { criarClienteServidor } from '@/lib/supabase/server';
 import { BotaoGerarFicha } from './BotaoGerarFicha';
 import { DadosDaFicha } from './DadosDaFicha';
+import { LinkDoCliente, type LinkAtivo } from './LinkDoCliente';
 
 export const metadata: Metadata = { title: 'Cliente — LatForms' };
 
@@ -50,7 +51,7 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
   const { data: cliente } = await supabase
     .from('clientes')
     .select(
-      'id, nome, email, rd_id, dados_rd, criado_em, atualizado_em, fichas(id, versao, status, criado_em, snapshot_atualizado_em, dados_snapshot, dados_respondidos, pdf_respondido_path)',
+      'id, nome, email, rd_id, dados_rd, criado_em, atualizado_em, fichas(id, versao, status, criado_em, snapshot_atualizado_em, dados_snapshot, dados_respondidos, pdf_respondido_path, respondida_em, tokens_acesso(expira_em, revogado_em, usos, ultimo_acesso_em))',
     )
     .eq('id', id)
     .order('criado_em', { referencedTable: 'fichas', ascending: false })
@@ -66,6 +67,11 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
   const versaoCliente = ficha?.dados_respondidos ? DadosFichaSchema.safeParse(ficha.dados_respondidos) : null;
   const pendenteAtualizar = ficha && !devolvida && versaoRd && !jsonIgual(ficha.dados_snapshot, versaoRd);
   const extras = Object.entries(dadosRd?.extras ?? {});
+  const agora = new Date();
+  const token = ficha?.tokens_acesso.find((t) => !t.revogado_em && new Date(t.expira_em) > agora) ?? null;
+  const linkAtivo: LinkAtivo | null = token
+    ? { expiraEm: token.expira_em, usos: token.usos, ultimoAcessoEm: token.ultimo_acesso_em }
+    : null;
 
   return (
     <div className="flex flex-col gap-10">
@@ -108,6 +114,19 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
                 </a>
               )}
             </div>
+            {ficha.respondida_em && (
+              <p>
+                <span className="font-bold">Devolvida pelo cliente em:</span> {formatarData.format(new Date(ficha.respondida_em))}
+              </p>
+            )}
+            <LinkDoCliente
+              fichaId={ficha.id}
+              nomeCliente={cliente.nome}
+              emailCliente={cliente.email}
+              remetente={auth.funcionario.nome}
+              ativo={linkAtivo}
+              podeGerar={proximoStatus(ficha.status, 'gerar_link') !== null}
+            />
             {pendenteAtualizar && (
               <p className="text-laranja-escuro">Os dados do RD mudaram desde a última atualização da ficha. Clique em “Atualizar ficha com o RD”.</p>
             )}

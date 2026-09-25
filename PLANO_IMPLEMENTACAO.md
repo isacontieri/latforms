@@ -326,7 +326,7 @@ A ficha contém **dados pessoais sensíveis** (saúde, CPF, passaporte).
 - ✅ Abre no Adobe Reader e no Chrome com acentos e dropdowns funcionando e editáveis, com os 71 campos; texto com emoji/caracteres fora do WinAnsi não quebra a geração; geração < 1 s.
 - ✅ Testar também o Preview do macOS: se ele corromper o formulário ao salvar, a página do cliente recomenda o Adobe Reader e o erro 422 explica isso.
 
-### Fase 5 — Link com token e página do cliente (1,5 dia)
+### Fase 5 — Link com token e página do cliente (1,5 dia) — ✅ concluída em 25/09/2026
 - Token, revogação, "copiar link" e "copiar mensagem" (texto pronto para a equipe colar no canal que usar).
 - `/f/[token]`: instruções, download, upload direto ao Storage, confirmação, aviso de correção quando houver.
 - ✅ Token expirado/revogado/ficha cancelada → 404; abrir a página não muda o status, baixar o PDF muda para `aberta`; E2E do fluxo completo.

@@ -60,3 +60,32 @@ export function linkOutlookWeb(email: string, assunto: string, corpo: string): s
   const p = new URLSearchParams({ to: email, subject: assunto, body: corpo });
   return `https://outlook.office.com/mail/deeplink/compose?${p.toString().replace(/\+/g, '%20')}`;
 }
+
+/** E-mail com o link da ficha para o cliente. */
+export function mensagemLinkCliente(d: { url: string; expiraEm: string; nomeCliente: string | null; remetente: string }) {
+  const primeiroNome = d.nomeCliente?.trim().split(/\s+/)[0];
+  return {
+    assunto: 'Sua Ficha de Cadastro — Latitudes',
+    corpo: [
+      primeiroNome ? `Olá, ${primeiroNome}!` : 'Olá!',
+      '',
+      'Para organizarmos a sua viagem, precisamos que você confira e complete a sua Ficha de Cadastro.',
+      'Ela já vem preenchida com as informações que você nos passou.',
+      '',
+      'É simples:',
+      '1. Abra o link abaixo e baixe a ficha (PDF).',
+      '2. Abra no computador, de preferência no Adobe Acrobat Reader, confira e complete os campos.',
+      '3. Salve e envie o arquivo pelo mesmo link.',
+      '',
+      d.url,
+      '',
+      `O link é pessoal e vale até ${formatarValidade(d.expiraEm).split(',')[0]}.`,
+      '',
+      'Qualquer dúvida, é só responder este e-mail.',
+      '',
+      'Abraço,',
+      d.remetente,
+      'Latitudes',
+    ].join('\n'),
+  };
+}

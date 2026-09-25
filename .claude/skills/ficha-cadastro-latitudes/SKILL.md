@@ -98,6 +98,8 @@ O snapshot da ficha (`POST /api/fichas`) e a tela do admin **sempre** mapeiam de
 
 ## 7. Receber e ler o PDF devolvido (`lib/ficha/pdf/read.ts`)
 
+**Implementado (Fase 5):** `lib/ficha/pdf/validar.ts` (`validarPdfDevolvido`, `temJavaScript` — percorre todos os objetos e dicionários diretos), `lib/ficha/acesso-cliente.ts` (`validarTokenCliente`, rate limit `f:<ip>` 20/min, `naoEncontrado()` 404 genérico), rotas `api/f/[token]/{pdf,upload-url,confirmar}`, página `app/f/[token]` (+ `not-found.tsx` genérico) e `api/fichas/[id]/link` (POST gera via RPC `gerar_link`, DELETE revoga). Na página do cliente (admin), `LinkDoCliente` gera/revoga e envia pelo Outlook para o e-mail do cliente (`mensagemLinkCliente`). O caminho do upload é conferido com regex `^<ficha_id>/\d{10,16}\.pdf$`. PDF quebrado que o pdf-lib abre de forma tolerante é recusado como `corrompido` (a leitura fica dentro de try).
+
 Fluxo de upload (sem passar o arquivo pela Vercel):
 1. No browser, checar `file.type === 'application/pdf'` e `file.size ≤ 5 MB` para feedback rápido (a validação real é no passo 4).
 2. `POST /api/f/[token]/upload-url` → valida token + rate limit + status permite upload (§8) → `storage.from('fichas-respondidas').createSignedUploadUrl('<ficha_id>/<timestamp>.pdf')` → retorna `{ path, token }`. A URL vale **2 h (fixo no Supabase, não configurável)**; a proteção vem do caminho novo e único, sem `upsert`, e da validação do passo 4.
