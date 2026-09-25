@@ -206,10 +206,16 @@ function Resumo({ titulo, resultados, concluido }: { titulo: string; resultados:
           </div>
         ))}
       </dl>
-      {r.fichasDesatualizadas > 0 && (
+      {r.fichasAtualizadas > 0 && (
+        <p className="text-sm">
+          {r.fichasAtualizadas} ficha(s) {concluido ? 'foram atualizadas' : 'serão atualizadas'} com os dados novos do RD
+          (o cliente ainda não tinha devolvido; o link continua o mesmo).
+        </p>
+      )}
+      {r.devolvidasComRdNovo > 0 && (
         <p className="text-sm text-laranja-escuro">
-          {r.fichasDesatualizadas} cliente(s) já têm ficha gerada e os dados do RD mudaram. As fichas existentes não são
-          alteradas; gere uma nova versão se precisar.
+          {r.devolvidasComRdNovo} cliente(s) já devolveram a ficha e o RD mudou depois. A versão do cliente é mantida;
+          os dados novos do RD aparecem na página de cada cliente para comparação.
         </p>
       )}
     </section>
@@ -235,7 +241,9 @@ const ROTULO_STATUS = { novo: 'Novo', atualizado: 'Atualizado', erro: 'Erro' } a
 
 function TabelaLinhas({ resultados }: { resultados: ResultadoLinha[] }) {
   const [todas, setTodas] = useState(false);
-  const relevantes = resultados.filter((r) => r.status === 'erro' || r.avisos.length > 0 || r.fichaMudou);
+  const relevantes = resultados.filter(
+    (r) => r.status === 'erro' || r.avisos.length > 0 || r.ficha === 'atualizada' || r.ficha === 'devolvida_rd_mudou',
+  );
   const linhas = todas ? resultados : relevantes;
 
   return (
@@ -271,7 +279,10 @@ function TabelaLinhas({ resultados }: { resultados: ResultadoLinha[] }) {
                       {r.avisos.map((a) => (
                         <li key={a}>{a}</li>
                       ))}
-                      {r.fichaMudou && <li className="text-laranja-escuro">Dados mudaram desde a última ficha gerada</li>}
+                      {r.ficha === 'atualizada' && <li>Ficha atualizada com os dados novos do RD</li>}
+                      {r.ficha === 'devolvida_rd_mudou' && (
+                        <li className="text-laranja-escuro">Cliente já devolveu a ficha: versão dele mantida, RD novo fica para comparação</li>
+                      )}
                     </ul>
                   </td>
                 </tr>

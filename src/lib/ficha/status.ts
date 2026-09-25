@@ -23,6 +23,14 @@ export const ROTULO_STATUS: Record<StatusFicha, string> = {
 const COM_LINK: readonly StatusFicha[] = ['enviada', 'aberta', 'respondida', 'correcao_solicitada'];
 
 /**
+ * Enquanto o cliente não devolveu a ficha, ela acompanha o RD (importação e botão "Atualizar ficha").
+ * Depois de devolvida, vale a versão do cliente; o RD novo só aparece para comparação.
+ */
+export function aceitaDadosDoRd(status: StatusFicha): boolean {
+  return status === 'gerada' || status === 'enviada' || status === 'aberta';
+}
+
+/**
  * Próximo status para um evento, ou `null` se a transição não é permitida.
  * Tabela: skill ficha-cadastro-latitudes §8.
  */

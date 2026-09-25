@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { mapearParaFicha } from '@/lib/ficha/mapping';
 import type { DadosFicha } from '@/lib/ficha/schema';
+import { aceitaDadosDoRd, type StatusFicha } from '@/lib/ficha/status';
 import { extrairLinha, type DadosRd } from '@/lib/rd/extrair';
 
 /** Linhas por requisição: mantém o corpo bem abaixo do limite de 4,5 MB da Vercel. */
@@ -30,14 +31,36 @@ export interface ResultadoLinha {
   status: StatusLinha;
   avisos: string[];
   erro: string | null;
-  /** Cliente já tem ficha gerada e os dados do RD mudaram desde então. */
-  fichaMudou: boolean;
+  /** O que acontece com a ficha do cliente (uma só por cliente; nunca duplica). */
+  ficha: AcaoFicha;
+}
+
+/**
+ * - `sem_ficha`: cliente ainda não tem ficha
+ * - `atualizada`: ficha não devolvida recebe os dados novos do RD (o link continua o mesmo)
+ * - `sem_mudanca`: dados do RD iguais aos da ficha
+ * - `devolvida_rd_mudou`: cliente já devolveu; a versão dele fica e o RD novo aparece para comparação
+ * - `devolvida`: cliente já devolveu e o RD não mudou
+ */
+export type AcaoFicha = 'sem_ficha' | 'atualizada' | 'sem_mudanca' | 'devolvida_rd_mudou' | 'devolvida';
+
+export interface FichaExistente {
+  id: string;
+  status: StatusFicha;
+  versao: number;
+  snapshot: unknown;
 }
 
 export interface ClienteExistente {
   id: string;
-  /** `dados_snapshot` da ficha mais recente, se houver. */
-  ultimaFicha: unknown | null;
+  /** A ficha ativa (não cancelada) do cliente, se houver. */
+  ficha: FichaExistente | null;
+}
+
+export interface FichaParaAtualizar {
+  fichaId: string;
+  versao: number;
+  snapshot: DadosFicha;
 }
 
 export interface ClienteParaSalvar {
@@ -51,6 +74,8 @@ export interface ClienteParaSalvar {
 export interface PlanoLote {
   resultados: ResultadoLinha[];
   salvar: ClienteParaSalvar[];
+  /** Fichas ainda não devolvidas que recebem os dados novos do RD. */
+  atualizarFichas: FichaParaAtualizar[];
 }
 
 /**
@@ -63,7 +88,10 @@ export function planejarLote(
   existentes: Map<string, ClienteExistente>,
 ): PlanoLote {
   const resultados: ResultadoLinha[] = [];
-  const porRdId = new Map<string, { cliente: ClienteParaSalvar; resultado: ResultadoLinha }>();
+  const porRdId = new Map<
+    string,
+    { cliente: ClienteParaSalvar; resultado: ResultadoLinha; atualizar: FichaParaAtualizar | null }
+  >();
 
   linhas.forEach((linha, i) => {
     const ext = extrairLinha(linha);
@@ -74,7 +102,7 @@ export function planejarLote(
       status: 'erro',
       avisos: ext.avisos,
       erro: ext.erro,
-      fichaMudou: false,
+      ficha: 'sem_ficha',
     };
     resultados.push(resultado);
     if (ext.erro || !ext.rdId) return;
@@ -82,17 +110,29 @@ export function planejarLote(
     const dadosFicha = mapearParaFicha(ext.dados.campos);
     const existente = existentes.get(ext.rdId);
     resultado.status = existente ? 'atualizado' : 'novo';
-    resultado.fichaMudou = existente?.ultimaFicha != null && !jsonIgual(existente.ultimaFicha, dadosFicha);
+    const ficha = existente?.ficha ?? null;
+    if (ficha) {
+      const mudou = !jsonIgual(ficha.snapshot, dadosFicha);
+      if (aceitaDadosDoRd(ficha.status)) resultado.ficha = mudou ? 'atualizada' : 'sem_mudanca';
+      else resultado.ficha = mudou ? 'devolvida_rd_mudou' : 'devolvida';
+    }
 
     const anterior = porRdId.get(ext.rdId);
     if (anterior) anterior.resultado.avisos.push('ID repetido no arquivo; vale a última ocorrência');
+    if (anterior && anterior.resultado.ficha === 'atualizada') anterior.resultado.ficha = 'sem_mudanca';
     porRdId.set(ext.rdId, {
       resultado,
       cliente: { rd_id: ext.rdId, nome: ext.nome, email: ext.email, dados_rd: ext.dados, dados_ficha: dadosFicha },
+      atualizar: resultado.ficha === 'atualizada' && ficha ? { fichaId: ficha.id, versao: ficha.versao, snapshot: dadosFicha } : null,
     });
   });
 
-  return { resultados, salvar: [...porRdId.values()].map((v) => v.cliente) };
+  const valores = [...porRdId.values()];
+  return {
+    resultados,
+    salvar: valores.map((v) => v.cliente),
+    atualizarFichas: valores.map((v) => v.atualizar).filter((a): a is FichaParaAtualizar => a !== null),
+  };
 }
 
 /** Compara JSON ignorando a ordem das chaves (o jsonb do Postgres reordena). */
@@ -114,6 +154,7 @@ export function resumir(resultados: ResultadoLinha[]) {
     atualizados: resultados.filter((r) => r.status === 'atualizado').length,
     erros: resultados.filter((r) => r.status === 'erro').length,
     comAviso: resultados.filter((r) => r.avisos.length > 0).length,
-    fichasDesatualizadas: resultados.filter((r) => r.fichaMudou).length,
+    fichasAtualizadas: resultados.filter((r) => r.ficha === 'atualizada').length,
+    devolvidasComRdNovo: resultados.filter((r) => r.ficha === 'devolvida_rd_mudou').length,
   };
 }

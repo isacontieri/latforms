@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { mapearParaFicha } from '@/lib/ficha/mapping';
-import { LoteSchema, MAX_LINHAS_LOTE, jsonIgual, planejarLote, resumir, type ClienteExistente } from '@/lib/importacao/lote';
+import {
+  LoteSchema, MAX_LINHAS_LOTE, jsonIgual, planejarLote, resumir, type ClienteExistente, type FichaExistente,
+} from '@/lib/importacao/lote';
 import { extrairLinha } from '@/lib/rd/extrair';
 import { decodificar, parseCsvRd } from '@/lib/rd/parse-csv';
 
@@ -17,7 +19,7 @@ describe('planejarLote', () => {
   });
 
   it('reimportar o mesmo arquivo marca como atualizado (não duplica)', () => {
-    const existentes = new Map(linhas.map((l, i) => [l.ID, { id: `c${i}`, ultimaFicha: null }]));
+    const existentes = new Map<string, ClienteExistente>(linhas.map((l, i) => [l.ID, { id: `c${i}`, ficha: null }]));
     const plano = planejarLote(linhas, 0, existentes);
     expect(resumir(plano.resultados)).toMatchObject({ novos: 0, atualizados: 4 });
     expect(new Set(plano.salvar.map((c) => c.rd_id)).size).toBe(4);
@@ -45,16 +47,42 @@ describe('planejarLote', () => {
     expect(plano.resultados[0].avisos).toContain('ID repetido no arquivo; vale a última ocorrência');
   });
 
-  it('avisa quando os dados mudaram desde a última ficha gerada', () => {
+  describe('ficha: uma por cliente, atualizada enquanto não devolvida', () => {
     const linha = linhas.find((l) => l.ID.endsWith('a03'))!;
-    const fichaAtual = mapearParaFicha(extrairLinha(linha).dados.campos);
+    const atual = mapearParaFicha(extrairLinha(linha).dados.campos);
+    const antiga = { ...atual, telefone: '(16) 90000-0000' };
+    const com = (status: FichaExistente['status'], snapshot: unknown) =>
+      new Map<string, ClienteExistente>([[linha.ID, { id: 'c', ficha: { id: 'f1', status, versao: 3, snapshot } }]]);
 
-    const igual = planejarLote([linha], 0, new Map([[linha.ID, { id: 'c', ultimaFicha: fichaAtual }]]));
-    expect(igual.resultados[0].fichaMudou).toBe(false);
+    it('sem ficha: nada a atualizar', () => {
+      const p = planejarLote([linha], 0, new Map([[linha.ID, { id: 'c', ficha: null }]]));
+      expect(p.resultados[0].ficha).toBe('sem_ficha');
+      expect(p.atualizarFichas).toEqual([]);
+    });
 
-    const antiga = { ...fichaAtual, telefone: '(16) 90000-0000' };
-    const mudou = planejarLote([linha], 0, new Map([[linha.ID, { id: 'c', ultimaFicha: antiga }]]));
-    expect(mudou.resultados[0].fichaMudou).toBe(true);
+    it.each(['gerada', 'enviada', 'aberta'] as const)('ficha "%s" com RD novo é atualizada (mesma ficha, versão +1)', (status) => {
+      const p = planejarLote([linha], 0, com(status, antiga));
+      expect(p.resultados[0].ficha).toBe('atualizada');
+      expect(p.atualizarFichas).toEqual([{ fichaId: 'f1', versao: 3, snapshot: atual }]);
+    });
+
+    it('ficha não devolvida e RD igual: sem mudança', () => {
+      const p = planejarLote([linha], 0, com('enviada', atual));
+      expect(p.resultados[0].ficha).toBe('sem_mudanca');
+      expect(p.atualizarFichas).toEqual([]);
+    });
+
+    it.each(['respondida', 'correcao_solicitada', 'aprovada'] as const)('ficha "%s" (devolvida) nunca é alterada', (status) => {
+      const p = planejarLote([linha], 0, com(status, antiga));
+      expect(p.resultados[0].ficha).toBe('devolvida_rd_mudou');
+      expect(p.atualizarFichas).toEqual([]);
+      expect(planejarLote([linha], 0, com(status, atual)).resultados[0].ficha).toBe('devolvida');
+    });
+
+    it('resumo conta fichas atualizadas e devolvidas com RD novo', () => {
+      expect(resumir(planejarLote([linha], 0, com('aberta', antiga)).resultados)).toMatchObject({ fichasAtualizadas: 1, devolvidasComRdNovo: 0 });
+      expect(resumir(planejarLote([linha], 0, com('respondida', antiga)).resultados)).toMatchObject({ fichasAtualizadas: 0, devolvidasComRdNovo: 1 });
+    });
   });
 });
 

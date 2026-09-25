@@ -124,11 +124,16 @@ export const hashToken = (t: string) => createHash('sha256').update(t).digest('h
 - URL: `${APP_URL}/f/${token}`. Não colocar o token em query string.
 - **Abrir a página `/f/[token]` não muda o status.** Pré-visualizações de link e antivírus de e-mail também abrem a URL. O status só vira `aberta` quando o PDF é baixado (`GET /api/f/[token]/pdf`) e a ficha está em `enviada`.
 
+**Uma ficha por cliente — nunca duplica (decisão da equipe, 25/09/2026).** Índice único `fichas_uma_ativa_por_cliente` (cliente_id, onde status ≠ `cancelada`).
+- Enquanto a ficha **não foi devolvida** (`gerada`, `enviada`, `aberta` → `aceitaDadosDoRd()`), ela acompanha o RD: cada importação e o botão "Atualizar ficha com o RD" trocam o `dados_snapshot` da **mesma** ficha (`versao + 1`, `snapshot_atualizado_em`), via `lib/ficha/atualizar.ts`. Status e link continuam os mesmos; o cliente passa a baixar o PDF atualizado.
+- Depois de **devolvida** (`respondida`, `correcao_solicitada`, `aprovada`), vale a versão do cliente (`dados_respondidos`): importações não alteram a ficha e `POST /api/fichas` responde 409. A página do cliente mostra "Versão do cliente" e, abaixo, "Versão atual do RD Station" com os campos diferentes destacados.
+- O cliente (tabela `clientes`) é sempre atualizado pelo `rd_id` na importação.
+
 Transições (centralizar em `lib/ficha/status.ts`; qualquer outra → erro):
 
 | De | Evento | Para |
 |---|---|---|
-| — | criar ficha | `gerada` |
+| — | gerar ficha (só se o cliente não tem ficha ativa) | `gerada` |
 | `gerada` | gerar link | `enviada` |
 | `enviada`, `aberta`, `respondida`, `correcao_solicitada` | gerar novo link | mantém o status |
 | `enviada` | cliente baixa o PDF | `aberta` |

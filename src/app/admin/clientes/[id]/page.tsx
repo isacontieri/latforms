@@ -2,15 +2,15 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { verificarFuncionario } from '@/lib/auth';
-import { CAMPO_POR_CHAVE, SECOES_FICHA } from '@/lib/ficha/campos';
 import { mapearParaFicha } from '@/lib/ficha/mapping';
-import type { DadosFicha } from '@/lib/ficha/schema';
-import { ROTULO_STATUS } from '@/lib/ficha/status';
+import { DadosFichaSchema, type DadosFicha } from '@/lib/ficha/schema';
+import { ROTULO_STATUS, aceitaDadosDoRd } from '@/lib/ficha/status';
 import { jsonIgual } from '@/lib/importacao/lote';
 import { COLUNAS_RD, type ChaveRd, type ColunaRd, type Grupo, type ValorCampo } from '@/lib/rd/colunas';
 import type { DadosRd } from '@/lib/rd/extrair';
 import { criarClienteServidor } from '@/lib/supabase/server';
 import { BotaoGerarFicha } from './BotaoGerarFicha';
+import { DadosDaFicha } from './DadosDaFicha';
 
 export const metadata: Metadata = { title: 'Cliente — LatForms' };
 
@@ -49,17 +49,22 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
   const supabase = await criarClienteServidor();
   const { data: cliente } = await supabase
     .from('clientes')
-    .select('id, nome, email, rd_id, dados_rd, criado_em, atualizado_em, fichas(id, versao, status, criado_em, dados_snapshot)')
+    .select(
+      'id, nome, email, rd_id, dados_rd, criado_em, atualizado_em, fichas(id, versao, status, criado_em, snapshot_atualizado_em, dados_snapshot, dados_respondidos, pdf_respondido_path)',
+    )
     .eq('id', id)
-    .order('versao', { referencedTable: 'fichas', ascending: false })
+    .order('criado_em', { referencedTable: 'fichas', ascending: false })
     .maybeSingle();
   if (!cliente) notFound();
 
   const dadosRd = cliente.dados_rd as unknown as DadosRd | null;
-  // sempre no modelo atual, a partir de todas as colunas do RD
-  const fichaAtual: DadosFicha | null = dadosRd?.campos ? mapearParaFicha(dadosRd.campos) : null;
-  const ultima = cliente.fichas[0];
-  const desatualizada = ultima && fichaAtual && !jsonIgual(ultima.dados_snapshot, fichaAtual);
+  // RD atual, sempre no modelo atual da ficha
+  const versaoRd: DadosFicha | null = dadosRd?.campos ? mapearParaFicha(dadosRd.campos) : null;
+  const ficha = cliente.fichas.find((f) => f.status !== 'cancelada') ?? null; // no máximo uma (índice único)
+  const canceladas = cliente.fichas.filter((f) => f.status === 'cancelada');
+  const devolvida = ficha !== null && !aceitaDadosDoRd(ficha.status);
+  const versaoCliente = ficha?.dados_respondidos ? DadosFichaSchema.safeParse(ficha.dados_respondidos) : null;
+  const pendenteAtualizar = ficha && !devolvida && versaoRd && !jsonIgual(ficha.dados_snapshot, versaoRd);
   const extras = Object.entries(dadosRd?.extras ?? {});
 
   return (
@@ -72,77 +77,80 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
         </p>
       </div>
 
-      {/* Fichas */}
+      {/* A ficha (uma por cliente) */}
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-bold text-laranja">Fichas</h2>
-          <BotaoGerarFicha clienteId={cliente.id} rotulo={ultima ? 'Gerar nova versão' : 'Gerar ficha'} />
+          <h2 className="text-lg font-bold text-laranja">Ficha</h2>
+          {!ficha && <BotaoGerarFicha clienteId={cliente.id} rotulo="Gerar ficha" />}
+          {ficha && !devolvida && <BotaoGerarFicha clienteId={cliente.id} rotulo="Atualizar ficha com o RD" />}
         </div>
-        {desatualizada && (
-          <p className="text-sm text-laranja-escuro">
-            Os dados do RD mudaram desde a última ficha. Gere uma nova versão para o PDF sair com os dados atuais.
-          </p>
-        )}
-        {cliente.fichas.length === 0 ? (
+
+        {!ficha ? (
           <p className="text-sm">Nenhuma ficha gerada ainda.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[32rem] text-left text-sm">
-              <thead className="border-b border-campo text-xs">
-                <tr>
-                  <th className="py-2 pr-3 font-bold">Versão</th>
-                  <th className="py-2 pr-3 font-bold">Situação</th>
-                  <th className="py-2 pr-3 font-bold">Criada em</th>
-                  <th className="py-2 font-bold">PDF</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cliente.fichas.map((f) => (
-                  <tr key={f.id} className="border-b border-campo/60">
-                    <td className="py-2 pr-3">v{f.versao}</td>
-                    <td className="py-2 pr-3">{ROTULO_STATUS[f.status]}</td>
-                    <td className="py-2 pr-3">{formatarData.format(new Date(f.criado_em))}</td>
-                    <td className="py-2">
-                      <a href={`/api/fichas/${f.id}/pdf?tipo=gerado`} className="font-bold text-laranja underline underline-offset-4">
-                        Baixar PDF
-                      </a>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="flex flex-col gap-2 rounded-sm border border-campo p-4 text-sm">
+            <div className="flex flex-wrap gap-x-8 gap-y-1">
+              <span><span className="font-bold">Situação:</span> {ROTULO_STATUS[ficha.status]}</span>
+              <span><span className="font-bold">Criada em:</span> {formatarData.format(new Date(ficha.criado_em))}</span>
+              {ficha.snapshot_atualizado_em && (
+                <span>
+                  <span className="font-bold">Atualizada com o RD em:</span> {formatarData.format(new Date(ficha.snapshot_atualizado_em))}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-x-6 gap-y-1">
+              <a href={`/api/fichas/${ficha.id}/pdf?tipo=gerado`} className="font-bold text-laranja underline underline-offset-4">
+                Baixar PDF {devolvida ? '(como foi enviado ao cliente)' : ''}
+              </a>
+              {ficha.pdf_respondido_path && (
+                <a href={`/api/fichas/${ficha.id}/pdf?tipo=respondido`} className="font-bold text-laranja underline underline-offset-4">
+                  Baixar PDF devolvido pelo cliente
+                </a>
+              )}
+            </div>
+            {pendenteAtualizar && (
+              <p className="text-laranja-escuro">Os dados do RD mudaram desde a última atualização da ficha. Clique em “Atualizar ficha com o RD”.</p>
+            )}
+            {devolvida && (
+              <p className="text-texto/70">
+                O cliente já devolveu a ficha: vale a versão dele. Novas importações do RD não alteram a ficha; os dados novos
+                aparecem abaixo para comparação.
+              </p>
+            )}
           </div>
+        )}
+        {canceladas.length > 0 && (
+          <p className="text-xs text-texto/60">{canceladas.length} ficha(s) cancelada(s) no histórico.</p>
         )}
       </section>
 
-      {/* O que vai para o PDF */}
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-bold text-laranja">Dados que vão para a ficha</h2>
-        {!fichaAtual ? (
-          <p className="text-sm text-red-700">Os dados do RD deste cliente estão incompletos. Reimporte o CSV.</p>
-        ) : (
-          SECOES_FICHA.map((secao) => (
-            <details key={secao.titulo} open className="rounded-sm border border-campo p-3">
-              <summary className="cursor-pointer text-sm font-bold">{secao.titulo}</summary>
-              <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
-                {secao.linhas.flat().map((k) => {
-                  const campo = CAMPO_POR_CHAVE.get(k)!;
-                  const v = fichaAtual[k as keyof DadosFicha];
-                  const largo = campo.tipo === 'multilinha';
-                  return (
-                    <div key={k} className={`flex flex-col gap-0.5 ${largo ? 'sm:col-span-2 lg:col-span-3' : ''}`}>
-                      <dt className="text-xs font-bold">{campo.rotulo}</dt>
-                      <dd className={`min-h-7 rounded-sm bg-campo px-2 py-1 text-sm whitespace-pre-line ${v === null ? 'text-texto/50 italic' : ''}`}>
-                        {v === null ? (campo.origem ? 'vazio no RD' : 'cliente preenche') : v}
-                      </dd>
-                    </div>
-                  );
-                })}
-              </dl>
-            </details>
-          ))
-        )}
-      </section>
+      {!versaoRd ? (
+        <p className="text-sm text-red-700">Os dados do RD deste cliente estão incompletos. Reimporte o CSV.</p>
+      ) : devolvida ? (
+        <>
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-bold text-laranja">Versão do cliente (ficha devolvida)</h2>
+            {versaoCliente?.success ? (
+              <DadosDaFicha dados={versaoCliente.data} />
+            ) : (
+              <p className="text-sm">Os dados lidos do PDF devolvido aparecem aqui.</p>
+            )}
+          </section>
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-bold text-laranja">Versão atual do RD Station</h2>
+            <DadosDaFicha
+              dados={versaoRd}
+              compararCom={versaoCliente?.success ? versaoCliente.data : null}
+              rotuloComparacao="da versão do cliente (destacados em laranja)."
+            />
+          </section>
+        </>
+      ) : (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-lg font-bold text-laranja">Dados que vão para a ficha</h2>
+          <DadosDaFicha dados={versaoRd} />
+        </section>
+      )}
 
       {/* Todas as colunas do RD */}
       <section className="flex flex-col gap-3">

@@ -100,6 +100,7 @@ export type Database = {
           motivo_correcao: string | null
           pdf_respondido_path: string | null
           respondida_em: string | null
+          snapshot_atualizado_em: string | null
           status: Database["public"]["Enums"]["status_ficha"]
           versao: number
         }
@@ -114,6 +115,7 @@ export type Database = {
           motivo_correcao?: string | null
           pdf_respondido_path?: string | null
           respondida_em?: string | null
+          snapshot_atualizado_em?: string | null
           status?: Database["public"]["Enums"]["status_ficha"]
           versao?: number
         }
@@ -128,6 +130,7 @@ export type Database = {
           motivo_correcao?: string | null
           pdf_respondido_path?: string | null
           respondida_em?: string | null
+          snapshot_atualizado_em?: string | null
           status?: Database["public"]["Enums"]["status_ficha"]
           versao?: number
         }
