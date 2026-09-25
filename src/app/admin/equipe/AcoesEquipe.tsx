@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { linkMailto, linkOutlookWeb, mensagemDoLink } from '@/lib/equipe/mensagens';
+import { linkOutlookWeb, mensagemDoLink } from '@/lib/equipe/mensagens';
 
 type Resposta<T> = { ok: boolean; data?: T; erro?: string };
 
@@ -52,9 +52,6 @@ function LinkGerado({ link, tipo, remetente }: { link: LinkParaEnviar; tipo: 'co
         >
           Enviar pelo Outlook
         </a>
-        <a href={linkMailto(link.email, assunto, corpo)} className="font-bold text-laranja underline underline-offset-4">
-          Abrir no programa de e-mail
-        </a>
         <button type="button" onClick={() => copiar(corpo, 'msg')} className="font-bold text-laranja underline underline-offset-4">
           {copiado === 'msg' ? 'Mensagem copiada ✓' : 'Copiar mensagem pronta'}
         </button>
@@ -64,9 +61,8 @@ function LinkGerado({ link, tipo, remetente }: { link: LinkParaEnviar; tipo: 'co
       </div>
       <p className="text-xs text-texto/70">
         “Enviar pelo Outlook” abre o Outlook na web numa aba nova, com destinatário, assunto e texto prontos — é só clicar
-        em Enviar (precisa estar logada no Outlook/Microsoft 365 da Latitudes). “Abrir no programa de e-mail” usa o
-        aplicativo instalado no computador, se houver um definido como padrão. Se nenhum abrir, use “Copiar mensagem
-        pronta”.
+        em Enviar (precisa estar logada no Outlook/Microsoft 365 da Latitudes). Se preferir outro canal, use “Copiar
+        mensagem pronta”.
       </p>
     </div>
   );

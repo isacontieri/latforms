@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { linkMailto, linkOutlookWeb, mensagemDoLink } from '@/lib/equipe/mensagens';
+import { linkOutlookWeb, mensagemDoLink } from '@/lib/equipe/mensagens';
 
 const url = 'https://latforms.vercel.app/convite/AbC_123-xyz';
 const expiraEm = '2026-10-02T14:36:00Z'; // 11:36 em São Paulo
@@ -35,19 +35,5 @@ describe('linkOutlookWeb', () => {
     expect(params.get('to')).toBe('beatriz@latitudes.com.br');
     expect(params.get('subject')).toBe('Assunto — ç');
     expect(params.get('body')).toBe('Linha 1\nLinha 2 & link?x=1 +');
-  });
-});
-
-describe('linkMailto', () => {
-  it('monta destinatário, assunto e corpo codificados (quebras de linha CRLF)', () => {
-    const href = linkMailto('beatriz@latitudes.com.br', 'Assunto — ç', 'Linha 1\nLinha 2 & link?x=1');
-    expect(href.startsWith('mailto:beatriz@latitudes.com.br?subject=')).toBe(true);
-    const params = new URLSearchParams(href.slice(href.indexOf('?') + 1));
-    expect(params.get('subject')).toBe('Assunto — ç');
-    expect(params.get('body')).toBe('Linha 1\r\nLinha 2 & link?x=1');
-  });
-
-  it('e-mail com + continua válido', () => {
-    expect(linkMailto('ana+teste@ex.com', 'a', 'b')).toMatch(/^mailto:ana%2Bteste@ex\.com\?/);
   });
 });
