@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { CAMPOS_FICHA } from '@/lib/ficha/campos';
 import { mapearParaFicha } from '@/lib/ficha/mapping';
 import { CHAVES_RD, type CamposRd } from '@/lib/rd/colunas';
 import { extrairLinha } from '@/lib/rd/extrair';
@@ -19,132 +20,124 @@ const campos = (parcial: Partial<CamposRd>): CamposRd =>
 describe('caso de referência completo (…a03)', () => {
   const f = fichaDe('a03');
 
-  it('bate com o esperado da skill', () => {
-    expect(f).toEqual({
-      nomeCompleto: 'Antônio Ribeiro Neto',
+  it('leva cada coluna do RD 1:1 para o campo de mesmo nome', () => {
+    expect(f).toMatchObject({
+      nome: 'Antônio Ribeiro Neto',
+      apelido: 'Antônio',
       nascimento: '18/03/1945',
+      nacionalidade: 'Brasileira',
       cpf: '123.456.789-09',
       rg: '12.345.678-9 SSP-SP',
-      passaporte: 'GB123456',
-      vencimentoPassaporte: '09/02/2030',
-      nacionalidade: 'Brasileira',
-      cep: '14026-800',
+      rne: null,
+      telefone: '(16) 98000-1111',
+      email: 'antonio.neto@exemplo.com',
+      preferenciaContato: 'E-mail',
+      agenciaNome: 'Agência Exemplo Eventos e Viagens',
       endereco: 'Rodovia Exemplo',
-      numeroComplemento: '100 / Casa 3 Cond Colina Verde',
+      numero: '100',
+      complemento: 'Casa 3 Cond Colina Verde',
       bairro: 'Nova Aliança',
       cidade: 'Ribeirao Preto',
       estado: 'SP',
+      cep: '14026-800',
       pais: 'Brasil',
-      celular: '(16) 98000-1111',
-      email: 'antonio.neto@exemplo.com',
-      profissao: null,
-      estadoCivil: null,
-      contatoEmergencia: 'Maria Aparecida Souza (Secretaria)',
-      telefoneEmergencia: '(16) 99000-1111',
-      medicamentoRegular: 'Não',
-      alergias: 'Não',
+      passaporte: 'GB123456',
+      passaportePaisEmissor: 'Brasil',
+      passaporteEmissao: '19/02/2020',
+      passaporteExpiracao: '09/02/2030',
+      emergenciaNome: 'Maria Aparecida Souza',
+      emergenciaParentesco: 'Secretaria',
+      emergenciaTelefone: '(16) 99000-1111',
+      emergenciaEmail: 'maria.souza@exemplo.com',
+      medicoNome: 'Dr. Fulano de Tal',
+      medicoTelefone: '(16) 99999-0000',
+      altura: '1,65',
+      peso: '84',
+      calcado: '37',
+      tamanhoRoupa: 'GG',
+      idiomas: 'Ingles, Espanhol',
+      assento: 'corredor',
       tipoSanguineo: 'O+',
-      convenioMedico: null,
-      antecedentesClinicos: 'Não',
-      condicionamentoFisico: null,
+      ultimoCheckup: '12/06/2023',
+      seConsideraSaudavel: 'Sim',
+      praticaAtividadeFisica: 'Sim',
       sabeNadar: 'Sim',
-      diabetico: null,
-      disturbioCardioRespiratorio: null,
-      restricoesAlimentares: 'Sim',
-      descricaoRestricoes: 'nao gosto de nada com muito alho e cebola crua',
-      vacinaTetano: false,
-      vacinaFebreAmarela: true,
-      vacinaCovid: true,
-      outrasObservacoes: 'Mobilidade: dificuldade em longas caminhadas\nPrefere ser chamado(a): Antônio',
+      temRestricaoFisica: 'Sim',
+      restricaoFisicaDescricao: 'dificuldade em longas caminhadas',
+      temDoencaCronica: 'Não',
+      doencaCronicaDescricao: null, // veio n/a
+      usaMedicamento: 'Não',
+      fezCirurgia: 'Não',
+      temQuestaoMedica: 'Não',
+      temAlergia: 'Não',
+      vacinas: 'Febre amarela, Covid-19',
+      acompanhamentoPsiquiatrico: 'Não',
+      tratamentoOdontologico: 'Sim',
+      alimentosNaoCome: 'nao gosto de nada com muito alho e cebola crua',
+      consomeAlcool: 'Sim',
+      querCatalogoFisico: 'Sim',
+      enderecoPostalIgual: 'Não',
     });
+  });
+
+  it('campos do modelo de 2024 ficam para o cliente', () => {
+    expect([f.estadoCivil, f.convenioMedico, f.condicionamentoFisico, f.diabetico, f.disturbioCardioRespiratorio])
+      .toEqual([null, null, null, null, null]);
   });
 });
 
-describe('caso de referência parcial (…a01)', () => {
+describe('caso parcial (…a01)', () => {
   const f = fichaDe('a01');
-  it('usa país pela nacionalidade e ignora "Não!"', () => {
+  it('data ISO, primeiro telefone, país pela nacionalidade', () => {
     expect(f.nascimento).toBe('19/02/1960');
-    expect(f.celular).toBe('(19) 99888-1234');
+    expect(f.telefone).toBe('(19) 99888-1234');
     expect(f.pais).toBe('Brasil');
-    expect(f.numeroComplemento).toBe('220 / Torre 3 apto. 223');
-    expect(f.outrasObservacoes).toBe('Prefere ser chamado(a): Carlão');
+    expect(f.numero).toBe('220');
+    expect(f.complemento).toBe('Torre 3 apto. 223');
+    expect(f.apelido).toBe('Carlão');
     expect(f.cidade).toBeNull();
   });
 });
 
 describe('casos quase vazios (…a02, …a04)', () => {
   it.each(['a02', 'a04'])('%s gera ficha só com nome, e-mail e celular', (id) => {
-    const f = fichaDe(id);
-    const preenchidos = Object.entries(f).filter(([, v]) => v !== null && v !== false).map(([k]) => k);
-    expect(preenchidos.sort()).toEqual(['celular', 'email', 'nomeCompleto']);
+    const preenchidos = Object.entries(fichaDe(id)).filter(([, v]) => v !== null).map(([k]) => k);
+    expect(preenchidos.sort()).toEqual(['email', 'nome', 'telefone']);
   });
 });
 
 describe('regras do mapeamento', () => {
-  it('campos sem fonte no CSV ficam para o cliente', () => {
+  it('toda chave de CAMPOS_FICHA existe no resultado', () => {
+    expect(Object.keys(mapearParaFicha(campos({}))).sort()).toEqual(CAMPOS_FICHA.map((c) => c.chave).sort());
+  });
+
+  it('sim/não só entra se for exatamente Sim ou Não', () => {
+    expect(mapearParaFicha(campos({ sabeNadar: 'Sim' })).sabeNadar).toBe('Sim');
+    expect(mapearParaFicha(campos({ sabeNadar: 'talvez' })).sabeNadar).toBeNull();
+  });
+
+  it('não infere saúde: atividade física não vira condicionamento', () => {
     const f = mapearParaFicha(campos({ praticaAtividadeFisica: 'Sim' }));
-    expect(f.estadoCivil).toBeNull();
-    expect(f.convenioMedico).toBeNull();
-    expect(f.condicionamentoFisico).toBeNull(); // não inferir de atividade física
-    expect(f.diabetico).toBeNull();
-    expect(f.disturbioCardioRespiratorio).toBeNull();
+    expect(f.praticaAtividadeFisica).toBe('Sim');
+    expect(f.condicionamentoFisico).toBeNull();
   });
 
   it('vencimento usa o passaporte brasileiro, não o estrangeiro', () => {
-    expect(mapearParaFicha(campos({ passaporteEstrangeiroExpiracao: '01/01/2031' })).vencimentoPassaporte).toBeNull();
+    expect(mapearParaFicha(campos({ passaporteEstrangeiroExpiracao: '01/01/2031' })).passaporteExpiracao).toBeNull();
   });
 
-  it('pais não vira Brasil para outra nacionalidade', () => {
+  it('país não vira Brasil para outra nacionalidade', () => {
     expect(mapearParaFicha(campos({ nacionalidade: 'Argentina' })).pais).toBeNull();
   });
 
-  it('contato de emergência sem parentesco', () => {
-    expect(mapearParaFicha(campos({ emergenciaNome: 'Ana' })).contatoEmergencia).toBe('Ana');
+  it('listas e números viram texto', () => {
+    const f = mapearParaFicha(campos({ vacinas: ['Tétano', 'Covid-19'], altura: 1.8 }));
+    expect(f.vacinas).toBe('Tétano, Covid-19');
+    expect(f.altura).toBe('1,8');
   });
 
-  it('medicamento: descrição > resposta sim/não > null', () => {
-    expect(mapearParaFicha(campos({ usaMedicamento: 'Sim', medicamentosDescricao: 'Losartana' })).medicamentoRegular).toBe('Losartana');
-    expect(mapearParaFicha(campos({ usaMedicamento: 'Sim' })).medicamentoRegular).toBe('Sim');
-    expect(mapearParaFicha(campos({})).medicamentoRegular).toBeNull();
-  });
-
-  it('alergias junta descrições com prefixo da alimentar', () => {
-    const f = mapearParaFicha(campos({ temAlergia: 'Sim', alergiasDescricao: 'Dipirona', alergiaAlimentarDescricao: 'Camarão' }));
-    expect(f.alergias).toBe('Dipirona — Alimentar: Camarão');
-  });
-
-  it('antecedentes: "Não" só se as três perguntas forem Não', () => {
-    expect(mapearParaFicha(campos({ temDoencaCronica: 'Não', fezCirurgia: 'Não' })).antecedentesClinicos).toBeNull();
-    expect(
-      mapearParaFicha(campos({ fezCirurgia: 'Sim', cirurgiaDescricao: 'Apendicite, 2010', doencaCronicaDescricao: 'Hipertensão' }))
-        .antecedentesClinicos,
-    ).toBe('Hipertensão — Cirurgia: Apendicite, 2010');
-  });
-
-  it('restrições alimentares', () => {
-    expect(mapearParaFicha(campos({ segueDieta: 'Não' })).restricoesAlimentares).toBe('Não');
-    const f = mapearParaFicha(campos({ segueDieta: 'Sim', qualDieta: 'Vegana' }));
-    expect(f.restricoesAlimentares).toBe('Sim');
-    expect(f.descricaoRestricoes).toBe('Dieta: Vegana');
-    expect(mapearParaFicha(campos({})).restricoesAlimentares).toBeNull();
-  });
-
-  it.each([
-    [['Tétano'], true],
-    [['antitetânica'], true],
-    [['dTpa'], true],
-    [['dT'], true],
-    [['Covid-19', 'Febre amarela'], false],
-  ])('vacina de tétano em %j → %s', (vacinas, esperado) => {
-    expect(mapearParaFicha(campos({ vacinas })).vacinaTetano).toBe(esperado);
-  });
-
-  it('covid pelo certificado', () => {
-    expect(mapearParaFicha(campos({ temCertificadoCovid: 'Sim' })).vacinaCovid).toBe(true);
-  });
-
-  it('observações internas nunca vão para a ficha', () => {
-    const f = mapearParaFicha(campos({ observacoesInternas: 'cliente difícil' }));
-    expect(JSON.stringify(f)).not.toContain('cliente difícil');
+  it('colunas fora da lista não entram na ficha (ex.: observações internas, qual dieta, cargo)', () => {
+    const f = mapearParaFicha(campos({ observacoesInternas: 'cliente difícil', qualDieta: 'Vegana', cargo: 'Engenheiro' }));
+    expect(JSON.stringify(f)).not.toMatch(/cliente difícil|Vegana|Engenheiro/);
   });
 });

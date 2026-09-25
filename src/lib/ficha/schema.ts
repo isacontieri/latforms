@@ -1,46 +1,15 @@
 import { z } from 'zod';
+import { CAMPOS_FICHA, SIM_NAO, type CampoFicha, type ChaveFicha } from './campos';
 
-export const OPCOES = {
-  estadoCivil: ['Solteiro', 'Casado', 'Separado', 'Divorciado', 'Viúvo'],
-  condicionamento: ['Ótimo', 'Bom', 'Razoável', 'Ruim'],
-  simNao: ['Sim', 'Não'],
-} as const;
+/** Valores da ficha: texto livre, "Sim"/"Não" ou uma das opções do campo; `null` = vazio. */
+export type DadosFicha = Record<ChaveFicha, string | null>;
 
-export const DadosFichaSchema = z.object({
-  nomeCompleto: z.string().nullable(),
-  nascimento: z.string().nullable(),
-  cpf: z.string().nullable(),
-  rg: z.string().nullable(),
-  passaporte: z.string().nullable(),
-  vencimentoPassaporte: z.string().nullable(),
-  nacionalidade: z.string().nullable(),
-  cep: z.string().nullable(),
-  endereco: z.string().nullable(),
-  numeroComplemento: z.string().nullable(),
-  bairro: z.string().nullable(),
-  cidade: z.string().nullable(),
-  estado: z.string().nullable(),
-  pais: z.string().nullable(),
-  celular: z.string().nullable(),
-  email: z.string().nullable(),
-  profissao: z.string().nullable(),
-  estadoCivil: z.enum(OPCOES.estadoCivil).nullable(),
-  contatoEmergencia: z.string().nullable(),
-  telefoneEmergencia: z.string().nullable(),
-  medicamentoRegular: z.string().nullable(),
-  alergias: z.string().nullable(),
-  tipoSanguineo: z.string().nullable(),
-  convenioMedico: z.string().nullable(),
-  antecedentesClinicos: z.string().nullable(),
-  condicionamentoFisico: z.enum(OPCOES.condicionamento).nullable(),
-  sabeNadar: z.enum(OPCOES.simNao).nullable(),
-  diabetico: z.enum(OPCOES.simNao).nullable(),
-  disturbioCardioRespiratorio: z.enum(OPCOES.simNao).nullable(),
-  restricoesAlimentares: z.enum(OPCOES.simNao).nullable(),
-  descricaoRestricoes: z.string().nullable(),
-  vacinaTetano: z.boolean(),
-  vacinaFebreAmarela: z.boolean(),
-  vacinaCovid: z.boolean(),
-  outrasObservacoes: z.string().nullable(),
-});
-export type DadosFicha = z.infer<typeof DadosFichaSchema>;
+function schemaDoCampo(c: CampoFicha) {
+  if (c.tipo === 'simNao') return z.enum(SIM_NAO).nullable();
+  if (c.tipo === 'opcoes' && c.opcoes) return z.enum(c.opcoes as [string, ...string[]]).nullable();
+  return z.string().nullable();
+}
+
+export const DadosFichaSchema = z
+  .object(Object.fromEntries((CAMPOS_FICHA as readonly CampoFicha[]).map((c) => [c.chave, schemaDoCampo(c)])))
+  .strict() as unknown as z.ZodType<DadosFicha>;

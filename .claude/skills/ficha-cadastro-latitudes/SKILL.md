@@ -1,6 +1,6 @@
 ---
 name: ficha-cadastro-latitudes
-description: Regras de domínio do LatForms, o motor de fichas da Latitudes — parse do CSV exportado do RD Station, normalizadores, mapeamento para a Ficha de Cadastro 2024 (PDF AcroForm), preenchimento/leitura com pdf-lib, upload do cliente, tokens por URL, ciclo de status da ficha, área dos funcionários, cron e backup. Use ao mexer em importação de CSV, mapeamento de campos, geração ou leitura do PDF, tokens, rotas /f/[token], status da ficha, cron ou backup.
+description: Regras de domínio do LatForms, o motor de fichas da Latitudes — parse do CSV exportado do RD Station, normalizadores, definição dos 71 campos da ficha (lib/ficha/campos.ts) e mapeamento 1:1, geração do PDF editável com pdf-lib no visual Latitudes, leitura do PDF devolvido, upload do cliente, tokens por URL, ciclo de status da ficha, área dos funcionários, cron e backup. Use ao mexer em importação de CSV, mapeamento de campos, geração ou leitura do PDF, tokens, rotas /f/[token], status da ficha, cron ou backup.
 ---
 
 # LatForms — regras de domínio
@@ -54,213 +54,47 @@ O mapeamento para a ficha (§4) lê de `dados_rd.campos`, nunca direto do CSV.
 | `lista(v)` | Separa por `,` ou `;` → `string[]` com `texto` em cada item (ex.: vacinas, idiomas) |
 | `semAcento(v)` | `v.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()` (usado nas comparações) |
 
-## 3. Tipo `DadosFicha` (`lib/ficha/schema.ts`)
+## 3. Definição da ficha (`lib/ficha/campos.ts`) — fonte única
 
-```ts
-export const OPCOES = {
-  estadoCivil: ['Solteiro', 'Casado', 'Separado', 'Divorciado', 'Viúvo'],
-  condicionamento: ['Ótimo', 'Bom', 'Razoável', 'Ruim'],
-  simNao: ['Sim', 'Não'],
-} as const;
+**Modelo v2 (25/09/2026), gerado pelo sistema.** O modelo Scribus de 2024 (35 campos) foi aposentado e está só como referência em `docs/modelo-2024/`. A ficha tem **71 campos**: os **66 do formulário do RD** (lista aprovada pela equipe, na ordem do formulário) + **5 do modelo de 2024** que só o cliente preenche (`estadoCivil`, `convenioMedico`, `condicionamentoFisico`, `diabetico`, `disturbioCardioRespiratorio`).
 
-export const DadosFichaSchema = z.object({
-  nomeCompleto: z.string().nullable(),
-  nascimento: z.string().nullable(),
-  cpf: z.string().nullable(),
-  rg: z.string().nullable(),
-  passaporte: z.string().nullable(),
-  vencimentoPassaporte: z.string().nullable(),
-  nacionalidade: z.string().nullable(),
-  cep: z.string().nullable(),
-  endereco: z.string().nullable(),
-  numeroComplemento: z.string().nullable(),
-  bairro: z.string().nullable(),
-  cidade: z.string().nullable(),
-  estado: z.string().nullable(),
-  pais: z.string().nullable(),
-  celular: z.string().nullable(),
-  email: z.string().nullable(),
-  profissao: z.string().nullable(),
-  estadoCivil: z.enum(OPCOES.estadoCivil).nullable(),
-  contatoEmergencia: z.string().nullable(),
-  telefoneEmergencia: z.string().nullable(),
-  medicamentoRegular: z.string().nullable(),
-  alergias: z.string().nullable(),
-  tipoSanguineo: z.string().nullable(),
-  convenioMedico: z.string().nullable(),
-  antecedentesClinicos: z.string().nullable(),
-  condicionamentoFisico: z.enum(OPCOES.condicionamento).nullable(),
-  sabeNadar: z.enum(OPCOES.simNao).nullable(),
-  diabetico: z.enum(OPCOES.simNao).nullable(),
-  disturbioCardioRespiratorio: z.enum(OPCOES.simNao).nullable(),
-  restricoesAlimentares: z.enum(OPCOES.simNao).nullable(),
-  descricaoRestricoes: z.string().nullable(),
-  vacinaTetano: z.boolean(),
-  vacinaFebreAmarela: z.boolean(),
-  vacinaCovid: z.boolean(),
-  outrasObservacoes: z.string().nullable(),
-});
-export type DadosFicha = z.infer<typeof DadosFichaSchema>;
-```
+- `CAMPOS_FICHA`: `{ chave, rotulo, tipo, origem, opcoes?, emLinha?, colunas }`. `chave` = nome do campo no PDF = chave em `DadosFicha` = **mesma chave do RD** quando há `origem`. Tipos: `texto`, `multilinha`, `simNao` (lista Sim/Não), `opcoes` (lista fixa).
+- `SECOES_FICHA`: seções e linhas (grade de 12 colunas). Toda chave aparece exatamente uma vez (testado).
+- **Colunas do CSV que NÃO entram no PDF** (decisão da equipe): tudo que não está na lista — ex.: `qualDieta`, `cargo`, `genero`, `empresa`, `aeroportoOrigem`, `levaAcompanhante`, `acompanhantes`, `tipoInscricao`, `distribuidora`, `observacaoExtra`, passaporte estrangeiro (número/datas/país), `enderecoEntrega`, dados de RD/marketing e **`observacoesInternas` (nunca)**. Continuam em `dados_rd` e visíveis só para a equipe.
+- Para acrescentar/remover campo da ficha: editar `CAMPOS_FICHA` + `SECOES_FICHA` (o PDF, a leitura e a tela do admin acompanham). Fichas já geradas guardam o snapshot antigo.
+
+`DadosFicha = Record<ChaveFicha, string | null>` (`lib/ficha/schema.ts`); `DadosFichaSchema` é gerado de `CAMPOS_FICHA` (`.strict()`; sim/não e opções validados como enum).
 
 ## 4. Mapeamento → Ficha (`lib/ficha/mapping.ts`)
 
-Entrada: `dados_rd.campos` (chaves do [catálogo](colunas-rd.md), já normalizadas; duplicatas do RD como `Estado`/`Estado:` já combinadas). "→ cliente" = sem fonte no CSV, fica em branco.
+Entrada: `dados_rd.campos`. **1:1**: cada campo com `origem` recebe o valor da coluna do RD de mesma chave; listas viram `"a, b"`, números viram texto pt-BR (`1.65` → `"1,65"`). Sim/não e opções só entram se o valor for exatamente uma opção válida (senão `null`). Campos sem origem ficam `null` (cliente preenche). **Nada de saúde é inferido.**
 
-| Campo ficha | Chave(s) em `dados_rd.campos` | Regra |
-|---|---|---|
-| nomeCompleto | `nome` | — |
-| nascimento | `nascimento` | — |
-| cpf | `cpf` | — |
-| rg | `rg` | — |
-| passaporte | `passaporte` | — |
-| vencimentoPassaporte | `passaporteExpiracao` | **não** usar `passaporteEstrangeiroExpiracao` |
-| nacionalidade | `nacionalidade` | — |
-| cep | `cep` | — |
-| endereco | `endereco` | — |
-| numeroComplemento | `numero` + `complemento` | `juntar(' / ', …)` |
-| bairro | `bairro` | — |
-| cidade | `cidade` | — |
-| estado | `estado` | — |
-| pais | `pais` | se vazio e `semAcento(nacionalidade)` começa com `brasileir` → `Brasil` |
-| celular | `telefone` | — |
-| email | `email` | — |
-| profissao | `cargo` | — |
-| estadoCivil | — | → cliente |
-| contatoEmergencia | `emergenciaNome` + `emergenciaParentesco` | `"Nome (Parentesco)"`; sem parentesco → só o nome |
-| telefoneEmergencia | `emergenciaTelefone` | — |
-| medicamentoRegular | `usaMedicamento` + `medicamentosDescricao` | descrição, se houver; senão `usaMedicamento` (`"Sim"`/`"Não"`); senão `null` |
-| alergias | `temAlergia` + `alergiasDescricao` + `alergiaAlimentarDescricao` (prefixo `"Alimentar: "`) | descrições com `juntar(' — ', …)`; se nenhuma → `temAlergia` (`"Sim"`/`"Não"`); senão `null` |
-| tipoSanguineo | `tipoSanguineo` | maiúsculas, sem espaços (`o +` → `O+`) |
-| convenioMedico | — | → cliente |
-| antecedentesClinicos | `doencaCronicaDescricao`, `cirurgiaDescricao` (prefixo `"Cirurgia: "`), `questaoMedicaDescricao` + `temDoencaCronica`, `fezCirurgia`, `temQuestaoMedica` | descrições com `juntar(' — ', …)`; se nenhuma e **as três** perguntas = `Não` → `"Não"`; senão `null` |
-| condicionamentoFisico | — | → cliente (não inferir de `praticaAtividadeFisica`) |
-| sabeNadar | `sabeNadar` | — |
-| diabetico | — | → cliente |
-| disturbioCardioRespiratorio | — | → cliente |
-| restricoesAlimentares | `segueDieta` + descrições abaixo | `'Sim'` se `segueDieta = Sim` **ou** houver descrição; `'Não'` se `segueDieta = Não` e sem descrição; senão `null` |
-| descricaoRestricoes | `qualDieta` (prefixo `"Dieta: "`), `restricoesAlimentaresDescricao`, `alimentosNaoCome` | `juntar(' — ', …)` |
-| vacinaTetano | `vacinas` | algum item, com `semAcento`, casa com `/tetan\|\bdtp?a?\b/` (pega `tétano`, `antitetânica`, `dT`, `dTpa`) |
-| vacinaFebreAmarela | `vacinas` | algum item contém `febre amarela` |
-| vacinaCovid | `vacinas`, `temCertificadoCovid` | algum item contém `covid` **ou** certificado = Sim |
-| outrasObservacoes | `comentarios`, `restricaoFisicaDescricao` (prefixo `"Mobilidade: "`), `observacaoExtra`, `apelido` (prefixo `"Prefere ser chamado(a): "`) | `juntar('\n', …)` |
+Ajustes de apresentação (não inventam dado): `tipoSanguineo` maiúsculo sem espaços (`o +` → `O+`); `pais` vazio + nacionalidade `brasileir*` → `Brasil`.
 
-- As colunas de texto livre usam o normalizador `descricao`, então respostas soltas como `"Não!"` em "Gostaria de fazer alguma observação?" já chegam como `null` e não viram observação.
-- Vacina não mencionada fica desmarcada (o checkbox não tem estado "não informado"); o cliente confere no PDF.
-- As demais chaves do catálogo não têm campo no template: continuam em `dados_rd.campos`, aparecem no admin e na exportação. `observacoesInternas` **nunca** vai para o PDF nem para a página do cliente.
+O snapshot da ficha (`POST /api/fichas`) e a tela do admin **sempre** mapeiam de `dados_rd.campos` (modelo atual); a coluna `clientes.dados_ficha` é só um cache preenchido na importação.
 
 **Casos de teste de referência** — `tests/fixtures/rd-export.csv` (98 colunas, cabeçalho idêntico ao export real, dados **fictícios**):
-- **Completo** (`ID …a03`, Antônio Ribeiro Neto): nascimento `18/03/1945`; CPF `123.456.789-09`; passaporte `GB123456` (veio minúsculo); vencimento `09/02/2030`; numeroComplemento `100 / Casa 3 Cond Colina Verde` (espaço duplo colapsado); pais `Brasil`; celular `(16) 98000-1111` (veio `(16) 9 8000-1111`); telefoneEmergencia `(16) 99000-1111`; contatoEmergencia `Maria Aparecida Souza (Secretaria)`; tipoSanguineo `O+` (veio `o +`); medicamentoRegular `Não`; alergias `Não`; antecedentesClinicos `Não` (descrições `n/a` + três respostas `nao`); sabeNadar `Sim`; restricoesAlimentares `Sim` com a descrição de `alimentosNaoCome`; vacinas febre amarela ✔ covid ✔ tétano ✘; outrasObservacoes = `Mobilidade: dificuldade em longas caminhadas\nPrefere ser chamado(a): Antônio`. Em `dados_rd.campos`: `altura = 1.65`, `vacinas = ['Febre amarela', 'Covid-19']`, `idiomas = ['Ingles', 'Espanhol']`, `rdEmpresaId` preenchido.
-- **Parcial** (`…a01`, Carlos Alberto Pereira): nascimento `1960-02-19` → `19/02/1960`; celular `(19) 99888-1234` (telefone com `;` usa o primeiro); email em minúsculas; pais `Brasil` (vazio + nacionalidade `Brasileiro`); numeroComplemento `220 / Torre 3 apto. 223`; outrasObservacoes = só `Prefere ser chamado(a): Carlão` (o `"Não!"` de `observacaoExtra` é descartado); `aeroportoOrigem`, `levaAcompanhante = 'Não'`, `distribuidora` e `tipoInscricao` presentes em `dados_rd.campos`.
-- **Vazios** (`…a02` e `…a04`): ficha gerada só com nome, e-mail e celular, sem erro.
-- **Coluna nova:** acrescentar uma coluna fora do catálogo à fixture num teste → vai para `dados_rd.extras` e gera aviso.
+- **Completo** (`…a03`, Antônio Ribeiro Neto): 56 campos preenchidos vindos do RD (ver `tests/unit/mapping.test.ts`), p.ex. nascimento `18/03/1945`, CPF `123.456.789-09`, passaporte `GB123456`, expiração `09/02/2030`, telefone `(16) 98000-1111`, médico `Dr. Fulano de Tal`, altura `1,65`, vacinas `Febre amarela, Covid-19`, `temRestricaoFisica = Sim` + descrição `dificuldade em longas caminhadas`, `doencaCronicaDescricao = null` (veio `n/a`). Os 5 campos do modelo de 2024 ficam `null`.
+- **Parcial** (`…a01`): nascimento ISO → `19/02/1960`, primeiro telefone do `;`, país `Brasil` pela nacionalidade, `numero = 220`, `complemento = Torre 3 apto. 223`, apelido `Carlão`.
+- **Vazios** (`…a02`, `…a04`): só `nome`, `email` e `telefone`.
 
-## 5. Campos do PDF modelo (`lib/ficha/pdf/fields.ts`)
+## 5. Geração do PDF (`lib/ficha/pdf/gerar.ts`)
 
-Template: `assets/templates/ficha-cadastro-2024.pdf` (A4, 1 página, Scribus, `NeedAppearances = true`). Os nomes internos são genéricos — **usar exatamente estes nomes**:
+`gerarFicha(dados, recursos)` desenha a ficha inteira com pdf-lib (A4, ~4 páginas) e cria os 71 campos **editáveis já preenchidos**. **Nunca `form.flatten()`.**
 
-```ts
-export const CAMPOS_PDF = {
-  nomeCompleto:                'Copiar de Campo de texto20 (2)',
-  nascimento:                  'Copiar de Campo de texto20 (17)',
-  cpf:                         'Campo de texto20',
-  rg:                          'Copiar de Campo de texto20 (14)',
-  passaporte:                  'Copiar de Campo de texto20',
-  vencimentoPassaporte:        'Copiar de Campo de texto20 (13)',
-  nacionalidade:               'Copiar de Campo de texto20 (25)',
-  cep:                         'Copiar de Campo de texto20 (3)',
-  endereco:                    'Copiar de Campo de texto20 (4)',
-  numeroComplemento:           'Copiar de Campo de texto20 (5)',
-  bairro:                      'Copiar de Campo de texto20 (6)',
-  cidade:                      'Copiar de Campo de texto20 (7)',
-  estado:                      'Copiar de Campo de texto20 (8)',
-  pais:                        'Copiar de Campo de texto20 (9)',
-  celular:                     'Copiar de Campo de texto20 (10)',
-  email:                       'Copiar de Campo de texto20 (11)',
-  profissao:                   'Copiar de Campo de texto20 (15)',
-  estadoCivil:                 'Lista suspensa58',                  // dropdown
-  contatoEmergencia:           'Copiar de Campo de texto20 (16)',
-  telefoneEmergencia:          'Copiar de Campo de texto20 (18)',
-  medicamentoRegular:          'Copiar de Campo de texto20 (19)',   // multilinha
-  alergias:                    'Copiar de Campo de texto20 (20)',   // multilinha
-  tipoSanguineo:               'Copiar de Campo de texto20 (21)',
-  convenioMedico:              'Copiar de Campo de texto20 (22)',   // multilinha
-  antecedentesClinicos:        'Copiar de Campo de texto20 (23)',   // multilinha
-  condicionamentoFisico:       'Copiar de Lista suspensa58',        // dropdown
-  sabeNadar:                   'Copiar de Lista suspensa58 (2)',    // dropdown
-  diabetico:                   'Copiar de Lista suspensa58 (3)',    // dropdown
-  disturbioCardioRespiratorio: 'Copiar de Lista suspensa58 (4)',    // dropdown
-  restricoesAlimentares:       'Copiar de Lista suspensa58 (5)',    // dropdown
-  descricaoRestricoes:         'Copiar de Campo de texto20 (24)',   // multilinha
-  vacinaTetano:                'Caixa de seleção101',               // checkbox (/Yes)
-  vacinaFebreAmarela:          'Copiar de Caixa de seleção101',     // checkbox (/Yes)
-  vacinaCovid:                 'Copiar de Caixa de seleção101 (2)', // checkbox (/Yes)
-  outrasObservacoes:           'Copiar de Campo de texto20 (26)',   // multilinha
-} as const satisfies Record<keyof DadosFicha, string>;
+- **Visual (medido no modelo de 2024):** logo Latitudes (`assets/templates/logo-latitudes.png`, extraído do modelo) no canto, título "FICHA DE CADASTRO" Open Sans Bold 13 laranja `#DA8E1E`, texto de instruções Open Sans 10,5 `#181715` terminando em laranja itálico "Por favor, não preencher à mão.", títulos de seção em laranja, rótulos Open Sans Bold 8,5 `#5C4E43`, campos com fundo `#CFD6DA` sem borda, "Página X de Y" no rodapé. Páginas seguintes: logo pequeno + título à direita.
+- **Fontes:** Open Sans (OFL, `assets/fonts/` + `OFL.txt`) para o texto fixo, via `@pdf-lib/fontkit` com subset. **Os campos usam Helvetica** (padrão dos leitores, edição confiável) → todo valor passa por `paraWinAnsi` (tira/translitera emoji e letras fora do WinAnsi; Ł→L, đ→d, →→->) e gera aviso sem conteúdo.
+- **Layout:** grade de 12 colunas; `simNao` (e `emLinha`) = pergunta à esquerda e lista à direita; demais = rótulo acima do campo; `multilinha` = 36 pt de altura. Quebra de página automática; título de seção nunca fica sozinho no pé; pergunta sim/não nunca se separa da descrição logo abaixo.
+- **Textos longos:** fonte do campo reduz de 10 até 6,5 pt; se nem assim couber, o valor fica inteiro (o leitor rola) e sai aviso. Nunca cortar.
+- **Sem JavaScript** no PDF gerado (o modelo de 2024 tinha formatador de data do Acrobat; o v2 não tem).
+- Metadados: título `Ficha de Cadastro — <Nome>`, assunto `MODELO_FICHA` (`LatForms — Ficha de Cadastro v2`), autor Latitudes.
+- Nome do arquivo: `nomeArquivoFicha()` → `Ficha_Cadastro_<Nome_Sobrenome_sem_acento>_<AAAA-MM-DD>.pdf` (data em `America/Sao_Paulo`).
 
-export const PLACEHOLDER_DROPDOWN = '---Selecione---';
-```
+## 6. Servir o PDF
 
-Opções dos dropdowns (a primeira é o placeholder `---Selecione---`, que representa `null`):
-- `Lista suspensa58`: Solteiro, Casado, Separado, Divorciado, Viúvo
-- `Copiar de Lista suspensa58`: Ótimo, Bom, Razoável, Ruim
-- `(2)`, `(3)`, `(4)`, `(5)`: Sim, Não
-
-Fonte padrão dos campos: 10 pt (texto) e 12 pt (dropdown). Não existe campo "nome da viagem".
-
-**Layout do modelo (referência visual aprovada pela equipe).** O PDF entregue ao cliente **é o próprio template preenchido**. Nunca redesenhar, reposicionar ou gerar a página do zero; o pdf-lib só escreve valores nos campos que já existem.
-- Cabeçalho: logo Latitudes à esquerda, título "FICHA DE CADASTRO" em laranja, texto de instruções e, em laranja itálico, "Por favor, não preencher à mão."
-- Campos: retângulos cinza-azulados sem borda, rótulo em negrito acima. Dropdowns mostram `---Selecione---`. Vacinas são 3 checkboxes na mesma linha, com a dica laranja "(marque o checkbox)".
-- Todos os campos têm **18 pt de altura** (uma linha visível), exceto "Outras observações" (45 pt). Os marcados `// multilinha` têm a flag multiline ligada, mas continuam com uma linha visível. Larguras vão de 74 pt (tipo sanguíneo) a 422 pt (nome).
-- Consequência: textos longos do RD (medicamentos, alergias, antecedentes, restrições) não cabem. Usar o `ajustarFonte` até o mínimo e **nunca cortar o valor**: o texto completo fica no campo (o leitor rola) e sempre está completo no banco e na tela de revisão do admin.
-- O template tem um erro de digitação que não vem de nós: "Descrição das **restições** alimentares". Só dá para corrigir editando o template no Scribus.
-
-**Inspeção do template (24/09/2026):**
-- 35 campos, nomes idênticos a `CAMPOS_PDF`. `NeedAppearances = true`. Criado no Scribus 1.6.1 e já salvo uma vez pelo pdf-lib.
-- Cores dos campos: fundo `MK /BG` = `#CFD6DA` (0.81176 0.83922 0.8549), texto `#171715`. Fonte `/Fo3Form` 10 pt (texto) e `/Fo0Form` 12 pt (dropdown). Checkbox com estilo `/CA (4)` (✓) e valor ligado `/Yes`.
-- **JavaScript existente (só este):** `/AA` nos campos `Copiar de Campo de texto20 (17)` (nascimento) e `Copiar de Campo de texto20 (13)` (vencimento do passaporte), com `/K` = `AFDate_KeystrokeEx("dd/mm/yyyy")` e `/F` = `AFDate_FormatEx("dd/mm/yyyy")`. É o formatador de data do Acrobat: as datas **precisam** ir no formato `DD/MM/AAAA` (o normalizador `data` já garante isso).
-- Sem `/OpenAction`, sem `/Names` e sem `/AA` no catálogo.
-
-## 6. Preencher o PDF (`lib/ficha/pdf/fill.ts`)
-
-```ts
-import { PDFDocument, PDFTextField, PDFDropdown, PDFCheckBox, StandardFonts } from 'pdf-lib';
-import { CAMPOS_PDF, PLACEHOLDER_DROPDOWN } from './fields';
-import { paraWinAnsi } from './winansi';
-
-export async function preencherFicha(template: Uint8Array, d: DadosFicha) {
-  const pdf = await PDFDocument.load(template);
-  const form = pdf.getForm();
-  const font = await pdf.embedFont(StandardFonts.Helvetica); // WinAnsi: cobre acentos PT-BR, não cobre emoji
-
-  for (const [chave, nome] of Object.entries(CAMPOS_PDF)) {
-    const valor = d[chave as keyof DadosFicha];
-    const campo = form.getField(nome);
-    if (campo instanceof PDFTextField) {
-      const txt = paraWinAnsi(font, (valor as string | null) ?? '', campo.isMultiline());
-      campo.setText(txt);
-      ajustarFonte(campo, txt, font);           // reduz até 6 pt se não couber
-    } else if (campo instanceof PDFDropdown) {
-      if (valor) campo.select(valor as string); // valor precisa existir nas opções
-      else if (campo.getOptions().includes(PLACEHOLDER_DROPDOWN)) campo.select(PLACEHOLDER_DROPDOWN);
-      else campo.clear();
-    } else if (campo instanceof PDFCheckBox) {
-      if (valor) campo.check(); else campo.uncheck();
-    }
-  }
-  form.updateFieldAppearances(font);
-  // NUNCA: form.flatten()
-  return pdf.save();
-}
-```
-
-- **`paraWinAnsi(font, txt, multilinha)`** (`lib/ficha/pdf/winansi.ts`): a Helvetica padrão só codifica WinAnsi, e o pdf-lib **lança erro** com emoji, `→`, letras de outros alfabetos etc. Para cada caractere fora de `font.getCharacterSet()`: tentar a versão sem acento (NFD sem marcas); se ainda não couber, remover. Em campo de uma linha, trocar `\n` por `' — '`. Registrar aviso quando algo for removido. Aplicar a **todo** texto que vai para o PDF.
-- `select()` lança erro se o valor não estiver nas opções → validar com zod antes; valor fora da lista vai para `outrasObservacoes` com aviso.
-- `ajustarFonte`: para campos de uma linha, `font.widthOfTextAtSize(txt, size)` ≤ largura do widget − 4; para multilinha, estimar linhas. Tamanho mínimo 6 pt; se ainda não couber, manter o texto (o leitor rola o campo) e registrar aviso.
-- Metadados: `pdf.setTitle('Ficha de Cadastro — <Nome>')`, `setProducer('LatForms — Latitudes')`.
-- Nome do arquivo: `Ficha_Cadastro_<Nome_Sobrenome_sem_acento>_<AAAA-MM-DD>.pdf` (data em `America/Sao_Paulo`).
-- **Implementado (Fase 4):** `lib/ficha/pdf/{fields,winansi,fill,read,template}.ts`. `paraWinAnsi` também translitera letras que o NFD não decompõe (Ł→L, đ→d, ı→i, →→->). `template.ts` usa caminho **literal** (`path.join(process.cwd(), 'assets', 'templates', '…pdf')`): com variável, o Turbopack inclui o projeto inteiro no deploy. `next.config.ts` inclui `assets/templates/**` em `/api/**/*` via `outputFileTracingIncludes`.
-- **Geração sob demanda:** `GET /api/f/[token]/pdf` e `GET /api/fichas/[id]/pdf?tipo=gerado` leem o template de `assets/templates/` (cachear o `Uint8Array` em variável de módulo), preenchem com `fichas.dados_snapshot` e respondem com `Content-Disposition: attachment`. Nada é salvo no Storage. `export const runtime = 'nodejs'`.
+- `lib/ficha/pdf/recursos.ts` lê fontes e logo do disco uma vez por instância, com **caminhos literais** (`path.join(process.cwd(), 'assets', 'fonts', '…')`): com variável, o Turbopack inclui o projeto inteiro no deploy. `next.config.ts` inclui `assets/fonts/**` e `assets/templates/**` em `/api/**/*` (`outputFileTracingIncludes`). Conferir o `.nft.json` da rota depois de mudar.
+- `GET /api/fichas/[id]/pdf?tipo=gerado` (e depois `GET /api/f/[token]/pdf`): gera a partir de `fichas.dados_snapshot` e responde com `Content-Disposition: attachment` e `Cache-Control: private, no-store`. Nada é salvo no Storage. Snapshot fora do schema atual (ficha do modelo antigo) → 422 "gere uma nova versão".
+- Geração leva ~0,3–0,7 s.
 
 ## 7. Receber e ler o PDF devolvido (`lib/ficha/pdf/read.ts`)
 
@@ -272,8 +106,8 @@ Fluxo de upload (sem passar o arquivo pela Vercel):
 
 Validação no servidor:
 - ≤ 5 MB, começa com `%PDF-`, abre com `PDFDocument.load` sem `ignoreEncryption`.
-- **Validar que é o template**: o conjunto de nomes de campos do arquivo deve conter todos os valores de `CAMPOS_PDF`. Senão → 422 "Envie o arquivo da ficha que você baixou. Se você editou no Preview do Mac ou no navegador e o erro continuar, use o Adobe Reader."
-- **JavaScript:** procurar `/JS` e `/JavaScript` no catálogo, em `/Names`, `/OpenAction` e nos `/AA` de páginas e widgets. Lista permitida = exatamente o JS do template (§5): `AFDate_KeystrokeEx("dd/mm/yyyy")` e `AFDate_FormatEx("dd/mm/yyyy")` nos `/AA` dos campos de nascimento e vencimento. Qualquer outro código → 422.
+- **Validar que é a nossa ficha**: o PDF deve ter todos os campos de `CAMPOS_FICHA` com o tipo certo (`lerFicha` → `nao_e_template`). O modelo antigo de 2024 é recusado. Senão → 422 "Envie o arquivo da ficha que você baixou. Se você editou no Preview do Mac ou no navegador e o erro continuar, use o Adobe Reader."
+- **JavaScript:** procurar `/JS` e `/JavaScript` no catálogo, em `/Names`, `/OpenAction` e nos `/AA` de páginas e widgets. O PDF gerado (v2) **não tem nenhum JavaScript** → qualquer ocorrência → 422.
 - Converter de volta: texto → string trim (vazio = null); dropdown `---Selecione---` → null; checkbox `isChecked()`.
 - Validar com `DadosFichaSchema`, salvar em `fichas.dados_respondidos` e `fichas.pdf_respondido_path`; status → `respondida`. Um novo envio antes da aprovação substitui o anterior (apagar o arquivo antigo para economizar Storage).
 
@@ -313,7 +147,7 @@ Em `aprovada`, o link ainda permite baixar, mas não enviar. Em `correcao_solici
 - Upload com feedback de sucesso/erro; após envio, mensagem de confirmação.
 - Rate limit: chave `f:<ip>`, com o IP de `x-real-ip` (header da Vercel), 20 req/min.
 - Cabeçalhos: `Referrer-Policy`, `X-Robots-Tag` e `X-Frame-Options` vêm do `next.config.ts`. **`Cache-Control: no-store` precisa ser definido na própria resposta** (route handlers de `/api/f/*`; página com `export const dynamic = 'force-dynamic'`): o Next sobrescreve o `Cache-Control` do `next.config` em páginas. Testar com `next build && next start`, não só no dev.
-- Visual seguindo a ficha em PDF: fundo branco, logo Latitudes no topo, títulos em laranja (`#E8912D`, aproximado), texto cinza-escuro, blocos e botões secundários no cinza-azulado dos campos (`#CFD6DA`, exato do template), texto `#171715`. Tipografia sem serifa, rótulos em negrito, avisos importantes em laranja itálico, como no modelo. Responsivo (o cliente pode abrir no celular, mas o passo de preencher recomenda computador).
+- Visual seguindo a ficha em PDF: fundo branco, logo Latitudes no topo, títulos em laranja `#DA8E1E`, rótulos `#5C4E43`, texto `#181715`, blocos no cinza-azulado dos campos `#CFD6DA` (cores exatas do modelo; logo em `public/logo-latitudes.png`). Tipografia sem serifa, rótulos em negrito, avisos importantes em laranja itálico, como no modelo. Responsivo (o cliente pode abrir no celular, mas o passo de preencher recomenda computador).
 
 ## 10. Área dos funcionários
 
@@ -329,8 +163,8 @@ Em `aprovada`, o link ainda permite baixar, mas não enviar. Em `correcao_solici
 ## 11. Testes obrigatórios
 
 - Unit: parser (BOM + linha `sep=`, cabeçalhos com espaço, cabeçalhos que colidem, linhas vazias, windows-1252), cada normalizador, cada linha da tabela de mapeamento, os casos de referência da seção 4 (todas as 98 colunas da fixture extraídas, com o tipo certo), coluna nova → `extras`, nome vazio.
-- PDF: gerar → ler de volta → `dados` iguais (round-trip); checkbox e dropdown preservados (inclusive `null` → placeholder); acentos (`Não`, `Ribeirão`, `Viúvo`); texto com emoji não quebra a geração.
-- PDF real: fixture preenchida e salva no Adobe Reader (`tests/fixtures/ficha-preenchida-reader.pdf`) é lida por completo.
+- PDF: gerar → ler de volta → `dados` iguais (round-trip) nos 4 casos; 71 campos editáveis com o tipo certo; dropdown `null` → placeholder; acentos (`Não`, `Ribeirão`, `Viúvo`); emoji não quebra a geração; texto longo nunca é cortado; modelo de 2024 recusado na leitura. Conferir o visual renderizando o PDF (PyMuPDF num venv do scratchpad) sempre que mexer no layout.
+- PDF real: fixture da ficha v2 preenchida e salva no Adobe Reader (`tests/fixtures/ficha-preenchida-reader.pdf`) é lida por completo.
 - Tokens: expirado, revogado, inexistente, ficha cancelada → 404; válido → 200; abrir a página não muda status, baixar o PDF muda para `aberta`.
 - Status: todas as transições da tabela da §8; transição inválida → erro.
 - Auth: route handler de funcionário chamado direto sem sessão → 401; com sessão mas fora de `funcionarios` → 403.

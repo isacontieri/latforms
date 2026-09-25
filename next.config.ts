@@ -8,9 +8,9 @@ const CABECALHOS_CLIENTE = [
 ];
 
 const nextConfig: NextConfig = {
-  // O template do PDF é lido do disco em runtime (lib/ficha/pdf/template.ts): incluir no deploy.
+  // Fontes e logo do PDF são lidos do disco em runtime (lib/ficha/pdf/recursos.ts): incluir no deploy.
   outputFileTracingIncludes: {
-    "/api/**/*": ["./assets/templates/**/*"],
+    "/api/**/*": ["./assets/fonts/**/*", "./assets/templates/**/*"],
   },
   async headers() {
     return [

@@ -2,11 +2,12 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { verificarFuncionario } from '@/lib/auth';
-import { ROTULOS_FICHA } from '@/lib/ficha/rotulos';
-import { DadosFichaSchema, type DadosFicha } from '@/lib/ficha/schema';
+import { CAMPO_POR_CHAVE, SECOES_FICHA } from '@/lib/ficha/campos';
+import { mapearParaFicha } from '@/lib/ficha/mapping';
+import type { DadosFicha } from '@/lib/ficha/schema';
 import { ROTULO_STATUS } from '@/lib/ficha/status';
 import { jsonIgual } from '@/lib/importacao/lote';
-import { COLUNAS_RD, type ColunaRd, type Grupo, type ValorCampo } from '@/lib/rd/colunas';
+import { COLUNAS_RD, type ChaveRd, type ColunaRd, type Grupo, type ValorCampo } from '@/lib/rd/colunas';
 import type { DadosRd } from '@/lib/rd/extrair';
 import { criarClienteServidor } from '@/lib/supabase/server';
 import { BotaoGerarFicha } from './BotaoGerarFicha';
@@ -32,9 +33,8 @@ const CHAVES_POR_GRUPO = (() => {
   return mapa;
 })();
 
-function formatarValor(v: ValorCampo | boolean): string {
+function formatarValor(v: ValorCampo): string {
   if (Array.isArray(v)) return v.join(', ');
-  if (typeof v === 'boolean') return v ? 'Sim' : 'Não';
   if (typeof v === 'number') return v.toLocaleString('pt-BR');
   return v ?? '';
 }
@@ -49,17 +49,18 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
   const supabase = await criarClienteServidor();
   const { data: cliente } = await supabase
     .from('clientes')
-    .select('id, nome, email, rd_id, dados_rd, dados_ficha, criado_em, atualizado_em, fichas(id, versao, status, criado_em, dados_snapshot)')
+    .select('id, nome, email, rd_id, dados_rd, criado_em, atualizado_em, fichas(id, versao, status, criado_em, dados_snapshot)')
     .eq('id', id)
     .order('versao', { referencedTable: 'fichas', ascending: false })
     .maybeSingle();
   if (!cliente) notFound();
 
-  const dadosRd = cliente.dados_rd as unknown as DadosRd;
-  const fichaAtual = DadosFichaSchema.safeParse(cliente.dados_ficha);
+  const dadosRd = cliente.dados_rd as unknown as DadosRd | null;
+  // sempre no modelo atual, a partir de todas as colunas do RD
+  const fichaAtual: DadosFicha | null = dadosRd?.campos ? mapearParaFicha(dadosRd.campos) : null;
   const ultima = cliente.fichas[0];
-  const desatualizada = ultima && !jsonIgual(ultima.dados_snapshot, cliente.dados_ficha);
-  const extras = Object.entries(dadosRd.extras ?? {});
+  const desatualizada = ultima && fichaAtual && !jsonIgual(ultima.dados_snapshot, fichaAtual);
+  const extras = Object.entries(dadosRd?.extras ?? {});
 
   return (
     <div className="flex flex-col gap-10">
@@ -117,22 +118,29 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
       {/* O que vai para o PDF */}
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-bold text-laranja">Dados que vão para a ficha</h2>
-        {!fichaAtual.success ? (
-          <p className="text-sm text-red-700">Os dados deste cliente não estão no formato da ficha. Reimporte o CSV.</p>
+        {!fichaAtual ? (
+          <p className="text-sm text-red-700">Os dados do RD deste cliente estão incompletos. Reimporte o CSV.</p>
         ) : (
-          <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
-            {(Object.keys(ROTULOS_FICHA) as (keyof DadosFicha)[]).map((k) => {
-              const v = fichaAtual.data[k];
-              return (
-                <div key={k} className="flex flex-col gap-0.5">
-                  <dt className="text-xs font-bold">{ROTULOS_FICHA[k]}</dt>
-                  <dd className={`min-h-7 rounded-sm bg-campo px-2 py-1 text-sm whitespace-pre-line ${v === null ? 'text-texto/50 italic' : ''}`}>
-                    {v === null ? 'cliente preenche' : formatarValor(v)}
-                  </dd>
-                </div>
-              );
-            })}
-          </dl>
+          SECOES_FICHA.map((secao) => (
+            <details key={secao.titulo} open className="rounded-sm border border-campo p-3">
+              <summary className="cursor-pointer text-sm font-bold">{secao.titulo}</summary>
+              <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+                {secao.linhas.flat().map((k) => {
+                  const campo = CAMPO_POR_CHAVE.get(k)!;
+                  const v = fichaAtual[k as keyof DadosFicha];
+                  const largo = campo.tipo === 'multilinha';
+                  return (
+                    <div key={k} className={`flex flex-col gap-0.5 ${largo ? 'sm:col-span-2 lg:col-span-3' : ''}`}>
+                      <dt className="text-xs font-bold">{campo.rotulo}</dt>
+                      <dd className={`min-h-7 rounded-sm bg-campo px-2 py-1 text-sm whitespace-pre-line ${v === null ? 'text-texto/50 italic' : ''}`}>
+                        {v === null ? (campo.origem ? 'vazio no RD' : 'cliente preenche') : v}
+                      </dd>
+                    </div>
+                  );
+                })}
+              </dl>
+            </details>
+          ))
         )}
       </section>
 
@@ -142,7 +150,7 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
         {ORDEM_GRUPOS.map((grupo) => {
           const colunas = CHAVES_POR_GRUPO.get(grupo) ?? [];
           const preenchidas = colunas.filter((c) => {
-            const v = dadosRd.campos?.[c.chave as keyof typeof dadosRd.campos];
+            const v = dadosRd?.campos?.[c.chave as ChaveRd];
             return v !== null && v !== undefined;
           });
           const vazias = colunas.length - preenchidas.length;
@@ -168,7 +176,7 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
                         {c.sensivel && <span title="Dado de saúde (LGPD)"> 🔒</span>}
                       </dt>
                       <dd className="whitespace-pre-line">
-                        {formatarValor(dadosRd.campos[c.chave as keyof typeof dadosRd.campos])}
+                        {formatarValor(dadosRd?.campos?.[c.chave as ChaveRd] ?? null)}
                       </dd>
                     </div>
                   ))}

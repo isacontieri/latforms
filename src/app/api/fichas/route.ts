@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { registrarAuditoria } from '@/lib/audit';
 import { exigirFuncionario } from '@/lib/auth';
-import { DadosFichaSchema } from '@/lib/ficha/schema';
+import { mapearParaFicha } from '@/lib/ficha/mapping';
+import type { DadosRd } from '@/lib/rd/extrair';
 import { falha, lerCorpo, ok } from '@/lib/http';
 import { criarClienteServidor } from '@/lib/supabase/server';
 
@@ -18,18 +19,19 @@ export async function POST(req: Request) {
   const supabase = await criarClienteServidor();
   const { data: cliente } = await supabase
     .from('clientes')
-    .select('id, dados_ficha, fichas(versao)')
+    .select('id, dados_rd, fichas(versao)')
     .eq('id', corpo.clienteId)
     .maybeSingle();
   if (!cliente) return falha('Cliente não encontrado', 404);
 
-  const snapshot = DadosFichaSchema.safeParse(cliente.dados_ficha);
-  if (!snapshot.success) return falha('Os dados do cliente não estão no formato da ficha; reimporte o CSV', 422);
+  const campos = (cliente.dados_rd as unknown as DadosRd | null)?.campos;
+  if (!campos) return falha('Os dados do RD deste cliente estão incompletos; reimporte o CSV', 422);
+  const snapshot = mapearParaFicha(campos);
 
   const versao = Math.max(0, ...cliente.fichas.map((f) => f.versao)) + 1;
   const { data: ficha, error } = await supabase
     .from('fichas')
-    .insert({ cliente_id: cliente.id, versao, dados_snapshot: snapshot.data, criado_por: funcionario.id })
+    .insert({ cliente_id: cliente.id, versao, dados_snapshot: snapshot, criado_por: funcionario.id })
     .select('id, versao, status')
     .single();
   if (error) {

@@ -1,7 +1,7 @@
 import { registrarAuditoria } from '@/lib/audit';
 import { exigirFuncionario } from '@/lib/auth';
-import { nomeArquivoFicha, preencherFicha } from '@/lib/ficha/pdf/fill';
-import { carregarTemplate } from '@/lib/ficha/pdf/template';
+import { gerarFicha, nomeArquivoFicha } from '@/lib/ficha/pdf/gerar';
+import { carregarRecursos } from '@/lib/ficha/pdf/recursos';
 import { DadosFichaSchema } from '@/lib/ficha/schema';
 import { falha } from '@/lib/http';
 import { criarClienteAdmin } from '@/lib/supabase/admin';
@@ -50,10 +50,10 @@ export async function GET(req: Request, ctx: RouteContext<'/api/fichas/[id]/pdf'
   }
 
   const dados = DadosFichaSchema.safeParse(ficha.dados_snapshot);
-  if (!dados.success) return falha('Dados da ficha em formato inválido', 422);
+  if (!dados.success) return falha('Esta ficha foi criada no modelo antigo. Gere uma nova versão para baixar o PDF.', 422);
 
   try {
-    const { pdf, avisos } = await preencherFicha(await carregarTemplate(), dados.data);
+    const { pdf, avisos } = await gerarFicha(dados.data, await carregarRecursos());
     if (avisos.length) console.info('pdf gerado com avisos', { fichaId: ficha.id, quantidade: avisos.length });
     await registrarAuditoria({ ator, acao: 'pdf_gerado_baixado', fichaId: ficha.id });
     return respostaPdf(pdf, nomeArquivoFicha(nome));

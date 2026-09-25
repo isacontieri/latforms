@@ -131,4 +131,4 @@ Regras:
 Onde esses dados aparecem:
 - **Admin → cliente:** todas as chaves, agrupadas por `grupo`, com os campos vazios recolhidos. `extras` aparece num bloco "Outras colunas do RD".
 - **Exportação CSV:** uma coluna por `chave` (na ordem do catálogo), mais `extras` e os campos de `dados_respondidos`. Exportar dados 🔒 grava `acao = 'exportar_sensivel'` na `auditoria`.
-- **PDF do cliente:** só o que o mapeamento da skill (§4) leva para os 35 campos do template. O restante não tem lugar no modelo atual; para aparecer no PDF, é preciso adicionar campos ao template no Scribus.
+- **PDF do cliente (modelo v2):** os 66 campos da lista aprovada, 1:1 pela mesma chave (`lib/ficha/campos.ts`). A coluna "uso na ficha PDF" acima é do modelo antigo de 2024 e ficou só como histórico. Colunas fora da lista (ex.: `qualDieta`, `cargo`, `genero`, `aeroportoOrigem`, `observacoesInternas`) não vão para o PDF.

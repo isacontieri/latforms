@@ -103,11 +103,10 @@ RD Station ──export CSV──▶ [Funcionário logado] Importar CSV
 - Se o RD ganhar colunas novas, elas não se perdem: vão para `dados_rd.extras` e a prévia da importação avisa.
 - **O export real tem dados pessoais e de saúde e não entra no repositório.** Os testes usam `tests/fixtures/rd-export.csv`, com o mesmo cabeçalho e dados fictícios.
 
-**PDF modelo**
-- 1 página A4, gerado no Scribus, 35 campos AcroForm (26 de texto, 6 dropdowns e 3 checkboxes).
-- Nomes internos genéricos (`Copiar de Campo de texto20 (17)`) → mapeamento documentado na skill.
-- Campos sem fonte no CSV (ficam para o cliente): Estado civil, Convênio médico, Condicionamento físico, Diabético(a)?, Distúrbio cardio-respiratório?.
-- **A verificar na Fase 4:** se o template tem JavaScript embutido (ações de dropdown/formatação do Scribus). Isso define a regra de validação do upload.
+**PDF da ficha (modelo v2, 25/09/2026)**
+- Decisão da equipe: o PDF traz **todos os 66 campos do formulário do RD** (lista aprovada) + os 5 campos do modelo de 2024 que só o cliente preenche (estado civil, convênio médico, condicionamento físico, diabético(a)?, distúrbio cardio-respiratório?) = **71 campos editáveis**.
+- O modelo Scribus de 2024 (35 campos, 1 página) foi aposentado: o **sistema gera o PDF inteiro** (`lib/ficha/campos.ts` + `lib/ficha/pdf/gerar.ts`), no mesmo visual — logo extraído do modelo, Open Sans (OFL), laranja `#DA8E1E`, campos `#CFD6DA`. Cerca de 4 páginas A4. O modelo antigo fica em `docs/modelo-2024/` só como referência.
+- Colunas do CSV fora da lista (ex.: qual dieta, cargo, gênero, aeroporto, observações internas) continuam guardadas e visíveis só para a equipe.
 
 ## 6. Modelo de dados (Supabase)
 
@@ -295,7 +294,7 @@ A ficha contém **dados pessoais sensíveis** (saúde, CPF, passaporte).
 - Next.js 16 + TS + Tailwind + shadcn/ui; Supabase CLI (apenas para migrations: `supabase link` + `supabase db push`, sem Docker).
 - `package.json` com o script `check` (lint + typecheck + testes).
 - `.env.local` apontando para `latforms-dev`: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `APP_URL`, `TOKEN_TTL_DIAS`, `CRON_SECRET`.
-- Template em `assets/templates/ficha-cadastro-2024.pdf`; `CLAUDE.md` na raiz; skill em `.claude/skills/ficha-cadastro-latitudes/SKILL.md`; CSV anonimizado em `tests/fixtures/rd-export.csv`.
+- Logo e fontes da ficha em `assets/` (o modelo de 2024 ficou em `docs/modelo-2024/`); `CLAUDE.md` na raiz; skill em `.claude/skills/ficha-cadastro-latitudes/SKILL.md`; CSV anonimizado em `tests/fixtures/rd-export.csv`.
 - ✅ `npm run dev` sobe conectado ao `latforms-dev`; `npm run check` passa.
 
 ### Fase 1 — Auth e layout (1 dia)
@@ -316,7 +315,7 @@ A ficha contém **dados pessoais sensíveis** (saúde, CPF, passaporte).
 ### Fase 4 — Geração do PDF (1,5 dia)
 - Inspecionar o template (JavaScript embutido, opções dos dropdowns, conjunto de caracteres).
 - `lib/ficha/pdf/fill.ts` com `pdf-lib`; geração sob demanda, sem salvar no Storage.
-- ✅ Abre no Adobe Reader e no Chrome com acentos, dropdowns e checkboxes funcionando e editáveis; texto com emoji/caracteres fora do WinAnsi não quebra a geração; geração < 1 s.
+- ✅ Abre no Adobe Reader e no Chrome com acentos e dropdowns funcionando e editáveis, com os 71 campos; texto com emoji/caracteres fora do WinAnsi não quebra a geração; geração < 1 s.
 - ✅ Testar também o Preview do macOS: se ele corromper o formulário ao salvar, a página do cliente recomenda o Adobe Reader e o erro 422 explica isso.
 
 ### Fase 5 — Link com token e página do cliente (1,5 dia)
@@ -344,7 +343,8 @@ A ficha contém **dados pessoais sensíveis** (saúde, CPF, passaporte).
 ├── CLAUDE.md
 ├── .claude/skills/ficha-cadastro-latitudes/{SKILL.md,colunas-rd.md}
 ├── .github/workflows/{ci.yml,backup.yml}
-├── assets/templates/ficha-cadastro-2024.pdf
+├── assets/{fonts,templates}/          # Open Sans (OFL) e logo usados no PDF
+├── docs/modelo-2024/                  # modelo Scribus antigo (referência)
 ├── vercel.json
 ├── src/
 │   ├── app/
@@ -365,7 +365,8 @@ A ficha contém **dados pessoais sensíveis** (saúde, CPF, passaporte).
 │   │   ├── auth.ts                 # exigirFuncionario()
 │   │   ├── rd/{parse-csv,colunas,extrair}.ts
 │   │   ├── ficha/{schema,mapping,normalizers,status}.ts
-│   │   ├── ficha/pdf/{fields,fill,read,winansi}.ts
+│   │   ├── ficha/campos.ts             # os 71 campos da ficha (fonte única)
+│   │   ├── ficha/pdf/{gerar,read,recursos,winansi}.ts
 │   │   ├── tokens.ts
 │   │   ├── rate-limit.ts
 │   │   └── audit.ts

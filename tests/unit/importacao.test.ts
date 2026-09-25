@@ -52,7 +52,7 @@ describe('planejarLote', () => {
     const igual = planejarLote([linha], 0, new Map([[linha.ID, { id: 'c', ultimaFicha: fichaAtual }]]));
     expect(igual.resultados[0].fichaMudou).toBe(false);
 
-    const antiga = { ...fichaAtual, celular: '(16) 90000-0000' };
+    const antiga = { ...fichaAtual, telefone: '(16) 90000-0000' };
     const mudou = planejarLote([linha], 0, new Map([[linha.ID, { id: 'c', ultimaFicha: antiga }]]));
     expect(mudou.resultados[0].fichaMudou).toBe(true);
   });

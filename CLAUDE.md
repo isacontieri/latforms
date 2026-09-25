@@ -2,7 +2,7 @@
 
 # LatForms
 
-Motor de fichas da Latitudes: transforma contatos exportados do RD Station (CSV) em **PDFs preenchíveis** da Ficha de Cadastro, entregues ao cliente por **link com token**. Só os funcionários fazem login. Plano completo em `PLANO_IMPLEMENTACAO.md`; regras de domínio (CSV, mapeamento, PDF, tokens) na skill `ficha-cadastro-latitudes`.
+Motor de fichas da Latitudes: transforma contatos exportados do RD Station (CSV) em **PDFs preenchíveis** da Ficha de Cadastro (gerados pelo sistema a partir de `lib/ficha/campos.ts`, 71 campos), entregues ao cliente por **link com token**. Só os funcionários fazem login. Plano completo em `PLANO_IMPLEMENTACAO.md`; regras de domínio (CSV, mapeamento, PDF, tokens) na skill `ficha-cadastro-latitudes`.
 
 Stack: Next.js 16 (App Router, `proxy.ts`) + TypeScript + Supabase (Auth, Postgres, Storage) + `pdf-lib` + `papaparse` + `zod` + Tailwind/shadcn. Testes: Vitest e Playwright. Nomes de domínio em português (`cliente`, `ficha`, `DadosFicha`), termos técnicos em inglês.
 
@@ -11,7 +11,7 @@ Hospedagem: **Vercel Hobby + Supabase Free + GitHub Free. O projeto tem custo ze
 ## Restrições de custo zero (obrigatórias)
 
 - **Não adicionar nenhum serviço, SDK ou dependência paga** (nem com free trial): nada de Upstash, Resend, Sentry pago, Vercel KV/Blob/Postgres, integrações com mensageiros etc. Só bibliotecas open source e os planos gratuitos acima. Se algo parecer exigir um serviço pago, parar e perguntar.
-- **Não guardar PDFs gerados** no Storage (limite de 1 GB). O PDF é gerado sob demanda a partir de `fichas.dados_snapshot` + template do repositório.
+- **Não guardar PDFs gerados** no Storage (limite de 1 GB). O PDF é gerado sob demanda a partir de `fichas.dados_snapshot` + fontes/logo de `assets/`.
 - **Não guardar o CSV importado.** O navegador lê o arquivo e envia lotes de até 200 linhas em JSON; o servidor processa e descarta.
 - **Nenhum arquivo passa pelo corpo de uma função Vercel** (limite de 4,5 MB). O PDF do cliente vai direto para o Supabase Storage por URL assinada.
 - **Rate limit** com a função Postgres `consumir_rate_limit`, não com serviço externo.
