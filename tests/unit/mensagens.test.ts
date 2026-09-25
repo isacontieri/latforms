@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { linkMailto, mensagemDoLink } from '@/lib/equipe/mensagens';
+import { linkMailto, linkOutlookWeb, mensagemDoLink } from '@/lib/equipe/mensagens';
 
 const url = 'https://latforms.vercel.app/convite/AbC_123-xyz';
 const expiraEm = '2026-10-02T14:36:00Z'; // 11:36 em São Paulo
@@ -23,6 +23,18 @@ describe('mensagemDoLink', () => {
     expect(assunto).toBe('Nova senha do LatForms — Latitudes');
     expect(corpo).toContain('definir uma nova senha');
     expect(corpo).toContain(url);
+  });
+});
+
+describe('linkOutlookWeb', () => {
+  it('abre o compose do Outlook na web com destinatário, assunto e corpo', () => {
+    const href = linkOutlookWeb('beatriz@latitudes.com.br', 'Assunto — ç', 'Linha 1\nLinha 2 & link?x=1 +');
+    expect(href.startsWith('https://outlook.office.com/mail/deeplink/compose?')).toBe(true);
+    expect(href).not.toContain('+'); // espaço como %20: o Outlook não converte "+" em espaço no corpo
+    const params = new URL(href).searchParams;
+    expect(params.get('to')).toBe('beatriz@latitudes.com.br');
+    expect(params.get('subject')).toBe('Assunto — ç');
+    expect(params.get('body')).toBe('Linha 1\nLinha 2 & link?x=1 +');
   });
 });
 

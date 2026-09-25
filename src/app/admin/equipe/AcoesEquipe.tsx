@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { linkMailto, mensagemDoLink } from '@/lib/equipe/mensagens';
+import { linkMailto, linkOutlookWeb, mensagemDoLink } from '@/lib/equipe/mensagens';
 
 type Resposta<T> = { ok: boolean; data?: T; erro?: string };
 
@@ -45,10 +45,15 @@ function LinkGerado({ link, tipo, remetente }: { link: LinkParaEnviar; tipo: 'co
       <p className="text-xs text-texto/70">Vale até {formatarValidade(link.expiraEm)} e só pode ser usado uma vez.</p>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <a
-          href={linkMailto(link.email, assunto, corpo)}
+          href={linkOutlookWeb(link.email, assunto, corpo)}
+          target="_blank"
+          rel="noopener noreferrer"
           className="flex h-9 items-center rounded-sm bg-laranja px-3 font-bold text-white no-underline hover:bg-laranja-escuro"
         >
-          Enviar por e-mail
+          Enviar pelo Outlook
+        </a>
+        <a href={linkMailto(link.email, assunto, corpo)} className="font-bold text-laranja underline underline-offset-4">
+          Abrir no programa de e-mail
         </a>
         <button type="button" onClick={() => copiar(corpo, 'msg')} className="font-bold text-laranja underline underline-offset-4">
           {copiado === 'msg' ? 'Mensagem copiada ✓' : 'Copiar mensagem pronta'}
@@ -58,8 +63,10 @@ function LinkGerado({ link, tipo, remetente }: { link: LinkParaEnviar; tipo: 'co
         </button>
       </div>
       <p className="text-xs text-texto/70">
-        “Enviar por e-mail” abre o seu programa de e-mail (ex.: Outlook) já com o texto pronto — é só clicar em Enviar. Se
-        nada abrir, use “Copiar mensagem pronta” e cole num e-mail ou no WhatsApp.
+        “Enviar pelo Outlook” abre o Outlook na web numa aba nova, com destinatário, assunto e texto prontos — é só clicar
+        em Enviar (precisa estar logada no Outlook/Microsoft 365 da Latitudes). “Abrir no programa de e-mail” usa o
+        aplicativo instalado no computador, se houver um definido como padrão. Se nenhum abrir, use “Copiar mensagem
+        pronta”.
       </p>
     </div>
   );

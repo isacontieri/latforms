@@ -30,8 +30,8 @@ export default async function PaginaEquipe() {
       <section className="flex flex-col gap-3">
         <h1 className="text-xl font-bold text-laranja">Equipe</h1>
         <p className="text-sm">
-          Quem está aqui pode entrar no LatForms. Para dar acesso a alguém, gere um link de convite e envie por e-mail (o
-          botão abre o seu Outlook com a mensagem pronta) ou pelo canal que preferir: a pessoa abre o link, informa o
+          Quem está aqui pode entrar no LatForms. Para dar acesso a alguém, gere um link de convite e envie pelo Outlook (o
+          botão abre um e-mail já escrito) ou pelo canal que preferir: a pessoa abre o link, informa o
           nome e cria a senha.
         </p>
         <FormConvidar remetente={auth.funcionario.nome} />

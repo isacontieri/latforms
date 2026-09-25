@@ -52,6 +52,15 @@ export function mensagemDoLink(d: DadosMensagem): { assunto: string; corpo: stri
   };
 }
 
+/**
+ * Novo e-mail já preenchido no Outlook na web (Microsoft 365, usado pela Latitudes). Abre numa aba nova;
+ * funciona mesmo sem programa de e-mail instalado/definido como padrão no Windows (caso em que o mailto não abre nada).
+ */
+export function linkOutlookWeb(email: string, assunto: string, corpo: string): string {
+  const p = new URLSearchParams({ to: email, subject: assunto, body: corpo });
+  return `https://outlook.office.com/mail/deeplink/compose?${p.toString().replace(/\+/g, '%20')}`;
+}
+
 /** `mailto:` com destinatário, assunto e corpo (quebras de linha como CRLF, como pede a RFC 6068). */
 export function linkMailto(email: string, assunto: string, corpo: string): string {
   const q = (s: string) => encodeURIComponent(s.replace(/\r?\n/g, '\r\n'));
