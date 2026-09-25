@@ -392,6 +392,7 @@ A ficha contém **dados pessoais sensíveis** (saúde, CPF, passaporte).
 5. Prazo de retenção dos dados após a viagem e dos IPs da auditoria (LGPD).
 
 ## 13. Evoluções futuras
+- Envio automático dos links (convite de equipe e, depois, link do cliente) pelo Microsoft 365 da Latitudes via Microsoft Graph (OAuth, app registrado no Entra com permissão só de envio e restrito a uma caixa como `nao-responda@latitudes.com.br`). Custo zero; depende da TI. Não usar SMTP com usuário/senha: a Microsoft desativa por padrão no fim de 2026. Hoje: botão "Enviar por e-mail" (`mailto:`) abre o Outlook de quem envia com a mensagem pronta.
 - Integração com a API do RD Station.
 - Ficha web como alternativa ao PDF.
 - Múltiplos modelos de ficha por tipo de viagem.

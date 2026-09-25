@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import { linkMailto, mensagemDoLink } from '@/lib/equipe/mensagens';
 
 type Resposta<T> = { ok: boolean; data?: T; erro?: string };
 
@@ -19,35 +20,56 @@ async function chamar<T>(url: string, metodo: 'POST' | 'DELETE', corpo?: unknown
 const formatarValidade = (iso: string) =>
   new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date(iso));
 
-/** Mostra o link gerado (uma única vez) com botões de copiar o link e uma mensagem pronta. */
-function LinkGerado({ url, expiraEm, mensagem }: { url: string; expiraEm: string; mensagem: string }) {
+interface LinkParaEnviar {
+  url: string;
+  expiraEm: string;
+  email: string;
+  nome: string | null;
+}
+
+/**
+ * Mostra o link gerado (uma única vez) com: enviar por e-mail (abre o Outlook/app de e-mail de quem convida,
+ * já com destinatário, assunto e texto), copiar a mensagem pronta e copiar só o link.
+ */
+function LinkGerado({ link, tipo, remetente }: { link: LinkParaEnviar; tipo: 'convite' | 'nova_senha'; remetente: string }) {
   const [copiado, setCopiado] = useState<string | null>(null);
+  const { assunto, corpo } = mensagemDoLink({ tipo, url: link.url, expiraEm: link.expiraEm, nomeDestinatario: link.nome, remetente });
   const copiar = async (texto: string, qual: string) => {
     await navigator.clipboard.writeText(texto);
     setCopiado(qual);
   };
   return (
     <div className="flex flex-col gap-2 rounded-sm border border-laranja bg-laranja/5 p-3 text-sm">
-      <p className="font-bold">Link gerado — copie agora, ele não aparece de novo.</p>
-      <code className="break-all rounded-sm bg-white px-2 py-1 text-xs">{url}</code>
-      <p className="text-xs text-texto/70">Vale até {formatarValidade(expiraEm)} e só pode ser usado uma vez.</p>
-      <div className="flex flex-wrap gap-3">
-        <button type="button" onClick={() => copiar(url, 'link')} className="font-bold text-laranja underline underline-offset-4">
-          {copiado === 'link' ? 'Link copiado ✓' : 'Copiar link'}
-        </button>
-        <button type="button" onClick={() => copiar(`${mensagem}\n${url}`, 'msg')} className="font-bold text-laranja underline underline-offset-4">
+      <p className="font-bold">Link gerado para {link.email} — envie agora, ele não aparece de novo.</p>
+      <code className="break-all rounded-sm bg-white px-2 py-1 text-xs">{link.url}</code>
+      <p className="text-xs text-texto/70">Vale até {formatarValidade(link.expiraEm)} e só pode ser usado uma vez.</p>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <a
+          href={linkMailto(link.email, assunto, corpo)}
+          className="flex h-9 items-center rounded-sm bg-laranja px-3 font-bold text-white no-underline hover:bg-laranja-escuro"
+        >
+          Enviar por e-mail
+        </a>
+        <button type="button" onClick={() => copiar(corpo, 'msg')} className="font-bold text-laranja underline underline-offset-4">
           {copiado === 'msg' ? 'Mensagem copiada ✓' : 'Copiar mensagem pronta'}
         </button>
+        <button type="button" onClick={() => copiar(link.url, 'link')} className="font-bold text-laranja underline underline-offset-4">
+          {copiado === 'link' ? 'Link copiado ✓' : 'Copiar só o link'}
+        </button>
       </div>
+      <p className="text-xs text-texto/70">
+        “Enviar por e-mail” abre o seu programa de e-mail (ex.: Outlook) já com o texto pronto — é só clicar em Enviar. Se
+        nada abrir, use “Copiar mensagem pronta” e cole num e-mail ou no WhatsApp.
+      </p>
     </div>
   );
 }
 
-export function FormConvidar() {
+export function FormConvidar({ remetente }: { remetente: string }) {
   const router = useRouter();
   const [pendente, iniciar] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
-  const [gerado, setGerado] = useState<{ url: string; expiraEm: string } | null>(null);
+  const [gerado, setGerado] = useState<LinkParaEnviar | null>(null);
 
   // onSubmit (e não <form action>): o React 19 limpa o formulário após uma action e, depois de um erro,
   // o envio seguinte não disparava. Assim os campos continuam preenchidos se o convite for recusado.
@@ -59,11 +81,13 @@ export function FormConvidar() {
     setGerado(null);
     iniciar(async () => {
       try {
+        const email = String(form.get('email') ?? '').trim();
+        const nome = String(form.get('nome') ?? '').trim() || null;
         const data = await chamar<{ url: string; expiraEm: string }>('/api/equipe/convites', 'POST', {
-          email: String(form.get('email') ?? ''),
-          nome: String(form.get('nome') ?? '') || undefined,
+          email,
+          nome: nome ?? undefined,
         });
-        setGerado(data);
+        setGerado({ ...data, email, nome });
         elemento.reset();
         router.refresh();
       } catch (e) {
@@ -92,28 +116,36 @@ export function FormConvidar() {
         </button>
       </form>
       {erro && <p role="alert" className="text-sm text-red-700">{erro}</p>}
-      {gerado && (
-        <LinkGerado
-          {...gerado}
-          mensagem="Olá! Este é o seu convite para acessar o LatForms, o sistema de fichas da Latitudes. Abra o link, preencha seu nome e crie sua senha:"
-        />
-      )}
+      {gerado && <LinkGerado link={gerado} tipo="convite" remetente={remetente} />}
     </div>
   );
 }
 
-export function AcoesFuncionario({ id, nome, ehVoce }: { id: string; nome: string; ehVoce: boolean }) {
+export function AcoesFuncionario({
+  id,
+  nome,
+  email,
+  ehVoce,
+  remetente,
+}: {
+  id: string;
+  nome: string;
+  email: string | null;
+  ehVoce: boolean;
+  remetente: string;
+}) {
   const router = useRouter();
   const [pendente, iniciar] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
-  const [gerado, setGerado] = useState<{ url: string; expiraEm: string } | null>(null);
+  const [gerado, setGerado] = useState<LinkParaEnviar | null>(null);
   const [confirmarRemocao, setConfirmarRemocao] = useState(false);
 
   const novaSenha = () =>
     iniciar(async () => {
       setErro(null);
       try {
-        setGerado(await chamar<{ url: string; expiraEm: string }>(`/api/equipe/${id}/nova-senha`, 'POST'));
+        const data = await chamar<{ url: string; expiraEm: string }>(`/api/equipe/${id}/nova-senha`, 'POST');
+        setGerado({ ...data, email: email ?? '', nome });
         router.refresh();
       } catch (e) {
         setErro((e as Error).message);
@@ -156,12 +188,7 @@ export function AcoesFuncionario({ id, nome, ehVoce }: { id: string; nome: strin
           ))}
       </div>
       {erro && <p role="alert" className="text-sm text-red-700">{erro}</p>}
-      {gerado && (
-        <LinkGerado
-          {...gerado}
-          mensagem="Olá! Este é o link para você definir uma nova senha no LatForms (vale por 24 horas e uma única vez):"
-        />
-      )}
+      {gerado && <LinkGerado link={gerado} tipo="nova_senha" remetente={remetente} />}
     </div>
   );
 }

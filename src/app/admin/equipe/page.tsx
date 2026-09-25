@@ -30,10 +30,11 @@ export default async function PaginaEquipe() {
       <section className="flex flex-col gap-3">
         <h1 className="text-xl font-bold text-laranja">Equipe</h1>
         <p className="text-sm">
-          Quem está aqui pode entrar no LatForms. Para dar acesso a alguém, gere um link de convite e envie pelo canal que
-          vocês já usam: a pessoa abre o link, informa o nome e cria a senha.
+          Quem está aqui pode entrar no LatForms. Para dar acesso a alguém, gere um link de convite e envie por e-mail (o
+          botão abre o seu Outlook com a mensagem pronta) ou pelo canal que preferir: a pessoa abre o link, informa o
+          nome e cria a senha.
         </p>
-        <FormConvidar />
+        <FormConvidar remetente={auth.funcionario.nome} />
       </section>
 
       <section className="flex flex-col gap-3">
@@ -47,7 +48,13 @@ export default async function PaginaEquipe() {
                 {f.id === auth.funcionario.id && <span className="text-xs text-laranja-escuro">(você)</span>}
                 <span className="text-xs text-texto/50">desde {formatarData.format(new Date(f.criado_em))}</span>
               </div>
-              <AcoesFuncionario id={f.id} nome={f.nome} ehVoce={f.id === auth.funcionario.id} />
+              <AcoesFuncionario
+                id={f.id}
+                nome={f.nome}
+                email={f.email}
+                ehVoce={f.id === auth.funcionario.id}
+                remetente={auth.funcionario.nome}
+              />
             </li>
           ))}
         </ul>
