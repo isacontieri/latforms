@@ -8,6 +8,10 @@ const CABECALHOS_CLIENTE = [
 ];
 
 const nextConfig: NextConfig = {
+  // O template do PDF é lido do disco em runtime (lib/ficha/pdf/template.ts): incluir no deploy.
+  outputFileTracingIncludes: {
+    "/api/**/*": ["./assets/templates/**/*"],
+  },
   async headers() {
     return [
       { source: "/f/:path*", headers: CABECALHOS_CLIENTE },

@@ -259,6 +259,7 @@ export async function preencherFicha(template: Uint8Array, d: DadosFicha) {
 - `ajustarFonte`: para campos de uma linha, `font.widthOfTextAtSize(txt, size)` ≤ largura do widget − 4; para multilinha, estimar linhas. Tamanho mínimo 6 pt; se ainda não couber, manter o texto (o leitor rola o campo) e registrar aviso.
 - Metadados: `pdf.setTitle('Ficha de Cadastro — <Nome>')`, `setProducer('LatForms — Latitudes')`.
 - Nome do arquivo: `Ficha_Cadastro_<Nome_Sobrenome_sem_acento>_<AAAA-MM-DD>.pdf` (data em `America/Sao_Paulo`).
+- **Implementado (Fase 4):** `lib/ficha/pdf/{fields,winansi,fill,read,template}.ts`. `paraWinAnsi` também translitera letras que o NFD não decompõe (Ł→L, đ→d, ı→i, →→->). `template.ts` usa caminho **literal** (`path.join(process.cwd(), 'assets', 'templates', '…pdf')`): com variável, o Turbopack inclui o projeto inteiro no deploy. `next.config.ts` inclui `assets/templates/**` em `/api/**/*` via `outputFileTracingIncludes`.
 - **Geração sob demanda:** `GET /api/f/[token]/pdf` e `GET /api/fichas/[id]/pdf?tipo=gerado` leem o template de `assets/templates/` (cachear o `Uint8Array` em variável de módulo), preenchem com `fichas.dados_snapshot` e respondem com `Content-Disposition: attachment`. Nada é salvo no Storage. `export const runtime = 'nodejs'`.
 
 ## 7. Receber e ler o PDF devolvido (`lib/ficha/pdf/read.ts`)

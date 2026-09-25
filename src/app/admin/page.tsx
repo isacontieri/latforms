@@ -52,7 +52,11 @@ export default async function PaginaAdmin() {
             <tbody>
               {clientes.map((c) => (
                 <tr key={c.id} className="border-b border-campo/60">
-                  <td className="py-2 pr-3">{c.nome}</td>
+                  <td className="py-2 pr-3">
+                    <Link href={`/admin/clientes/${c.id}`} className="font-bold hover:text-laranja hover:underline">
+                      {c.nome}
+                    </Link>
+                  </td>
                   <td className="py-2 pr-3">{c.email ?? '—'}</td>
                   <td className="py-2 pr-3">{c.fichas[0]?.count ?? 0}</td>
                   <td className="py-2">{formatarData.format(new Date(c.atualizado_em))}</td>
