@@ -234,6 +234,7 @@ A troca de link (revogar o anterior + criar o novo) é feita numa função SQL `
 | `/login` | Login dos funcionários |
 | `/admin` | Lista de fichas com filtros por status e busca |
 | `/admin/importar` | Selecionar CSV → prévia → confirmar |
+| `/admin/equipe` | Quem tem acesso; gerar link de convite (7 dias) ou de nova senha (24 h); remover acesso |
 | `/admin/clientes/[id]` | Todas as colunas do RD agrupadas, dados mapeados para a ficha, histórico, gerar ficha/link, revogar, baixar PDFs, comparar gerado × respondido, aprovar / pedir correção |
 
 **API**
@@ -250,6 +251,11 @@ A troca de link (revogar o anterior + criar o novo) é feita numa função SQL `
 | POST | `/api/fichas/lote` `{ clienteIds[] }` | funcionário |
 | GET | `/api/fichas/[id]/pdf?tipo=gerado\|respondido` | funcionário |
 | GET | `/api/exportar?status=respondida` → CSV com todas as colunas do RD + dados respondidos | funcionário |
+| POST | `/api/equipe/convites` `{ email, nome? }` → link de convite (uso único) | funcionário |
+| DELETE | `/api/equipe/convites/[id]` → cancela link pendente | funcionário |
+| POST | `/api/equipe/[id]/nova-senha` → link de nova senha | funcionário |
+| DELETE | `/api/equipe/[id]` → remove o acesso | funcionário |
+| GET | `/convite/[token]` → criar acesso ou nova senha (sem login) | token |
 | GET | `/f/[token]` → página do cliente | token |
 | GET | `/api/f/[token]/pdf` → gera e baixa o PDF na hora | token |
 | POST | `/api/f/[token]/upload-url` → URL assinada de upload no Storage | token |

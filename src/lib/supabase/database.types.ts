@@ -88,6 +88,56 @@ export type Database = {
           },
         ]
       }
+      convites_equipe: {
+        Row: {
+          criado_em: string
+          criado_por: string | null
+          email: string
+          expira_em: string
+          id: string
+          nome: string | null
+          revogado_em: string | null
+          tipo: Database["public"]["Enums"]["tipo_convite"]
+          token_hash: string
+          usado_em: string | null
+          usuario_id: string | null
+        }
+        Insert: {
+          criado_em?: string
+          criado_por?: string | null
+          email: string
+          expira_em: string
+          id?: string
+          nome?: string | null
+          revogado_em?: string | null
+          tipo: Database["public"]["Enums"]["tipo_convite"]
+          token_hash: string
+          usado_em?: string | null
+          usuario_id?: string | null
+        }
+        Update: {
+          criado_em?: string
+          criado_por?: string | null
+          email?: string
+          expira_em?: string
+          id?: string
+          nome?: string | null
+          revogado_em?: string | null
+          tipo?: Database["public"]["Enums"]["tipo_convite"]
+          token_hash?: string
+          usado_em?: string | null
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "convites_equipe_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fichas: {
         Row: {
           aprovada_em: string | null
@@ -154,16 +204,19 @@ export type Database = {
       funcionarios: {
         Row: {
           criado_em: string
+          email: string | null
           id: string
           nome: string
         }
         Insert: {
           criado_em?: string
+          email?: string | null
           id: string
           nome: string
         }
         Update: {
           criado_em?: string
+          email?: string | null
           id?: string
           nome?: string
         }
@@ -293,6 +346,7 @@ export type Database = {
         | "correcao_solicitada"
         | "aprovada"
         | "cancelada"
+      tipo_convite: "convite" | "nova_senha"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -429,6 +483,7 @@ export const Constants = {
         "aprovada",
         "cancelada",
       ],
+      tipo_convite: ["convite", "nova_senha"],
     },
   },
 } as const

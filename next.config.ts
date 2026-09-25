@@ -16,6 +16,7 @@ const nextConfig: NextConfig = {
     return [
       { source: "/f/:path*", headers: CABECALHOS_CLIENTE },
       { source: "/api/f/:path*", headers: CABECALHOS_CLIENTE },
+      { source: "/convite/:path*", headers: CABECALHOS_CLIENTE },
       {
         source: "/:path*",
         headers: [

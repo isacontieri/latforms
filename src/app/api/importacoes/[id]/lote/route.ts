@@ -2,7 +2,7 @@ import { exigirFuncionario } from '@/lib/auth';
 import { atualizarDadosDaFicha } from '@/lib/ficha/atualizar';
 import { falha, lerCorpo, ok } from '@/lib/http';
 import { LoteSchema, planejarLote, resumir } from '@/lib/importacao/lote';
-import { buscarExistentes } from '@/lib/importacao/servidor';
+import { anexarAvisosDeDuplicidade, buscarExistentes } from '@/lib/importacao/servidor';
 import { extrairLinha } from '@/lib/rd/extrair';
 import type { Json } from '@/lib/supabase/database.types';
 import { criarClienteServidor } from '@/lib/supabase/server';
@@ -30,7 +30,8 @@ export async function POST(req: Request, ctx: RouteContext<'/api/importacoes/[id
   try {
     const rdIds = corpo.linhas.map((l) => extrairLinha(l).rdId).filter((x): x is string => x !== null);
     const existentes = await buscarExistentes(supabase, [...new Set(rdIds)]);
-    const { resultados, salvar, atualizarFichas } = planejarLote(corpo.linhas, corpo.inicio, existentes);
+    const { resultados, salvar, atualizarFichas, documentos } = planejarLote(corpo.linhas, corpo.inicio, existentes);
+    await anexarAvisosDeDuplicidade(supabase, documentos, resultados); // antes do upsert: compara com o que já existia
 
     if (salvar.length > 0) {
       const { error } = await supabase.from('clientes').upsert(

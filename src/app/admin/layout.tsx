@@ -42,6 +42,7 @@ export default async function LayoutAdmin({ children }: LayoutProps<'/admin'>) {
             <nav className="flex gap-4 text-sm">
               <Link href="/admin" className="hover:text-laranja">Clientes</Link>
               <Link href="/admin/importar" className="hover:text-laranja">Importar CSV</Link>
+              <Link href="/admin/equipe" className="hover:text-laranja">Equipe</Link>
             </nav>
           </div>
           <div className="flex items-center gap-4 text-sm">

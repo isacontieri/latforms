@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { MAX_LINHAS_LOTE, resumir, type ResultadoLinha } from '@/lib/importacao/lote';
-import { verificarCabecalhos } from '@/lib/rd/extrair';
+import { MAX_LINHAS_LOTE, avisosDeDuplicidade, resumir, type DocContato, type ResultadoLinha } from '@/lib/importacao/lote';
+import { extrairLinha, verificarCabecalhos } from '@/lib/rd/extrair';
 import { decodificar, parseCsvRd, type CsvRd } from '@/lib/rd/parse-csv';
 
 type Estado =
@@ -23,6 +23,19 @@ async function postar<T>(url: string, corpo: unknown): Promise<T> {
   const json = (await r.json().catch(() => null)) as { ok: boolean; data?: T; erro?: string } | null;
   if (!r.ok || !json?.ok) throw new Error(json?.erro ?? `Erro ${r.status}`);
   return json.data as T;
+}
+
+/** Mesmo CPF ou e-mail com IDs do RD diferentes dentro do arquivo inteiro (os lotes não se enxergam no servidor). */
+function comDuplicadosNoArquivo(csv: CsvRd, resultados: ResultadoLinha[]): ResultadoLinha[] {
+  const docs: DocContato[] = csv.linhas.flatMap((l, indice) => {
+    const e = extrairLinha(l);
+    return e.rdId ? [{ indice, rdId: e.rdId, nome: e.nome, cpf: e.dados.campos.cpf as string | null, email: e.email }] : [];
+  });
+  const avisos = avisosDeDuplicidade(docs, [], true);
+  return resultados.map((r) => {
+    const extra = (avisos.get(r.indice) ?? []).filter((a) => !r.avisos.includes(a));
+    return extra.length ? { ...r, avisos: [...r.avisos, ...extra] } : r;
+  });
 }
 
 function lotes<T>(itens: T[]): { inicio: number; itens: T[] }[] {
@@ -51,7 +64,7 @@ export function ImportarCsv() {
         resultados.push(...r.resultados);
         setEstado({ tipo: 'analisando', feito: resultados.length, total: csv.linhas.length });
       }
-      setEstado({ tipo: 'previa', resultados });
+      setEstado({ tipo: 'previa', resultados: comDuplicadosNoArquivo(csv, resultados) });
     } catch (e) {
       setEstado({ tipo: 'erro', mensagem: (e as Error).message });
     }
@@ -75,7 +88,7 @@ export function ImportarCsv() {
         resultados.push(...r.resultados);
         setEstado({ tipo: 'importando', feito: resultados.length, total: csv.linhas.length });
       }
-      setEstado({ tipo: 'concluido', resultados });
+      setEstado({ tipo: 'concluido', resultados: comDuplicadosNoArquivo(csv, resultados) });
     } catch (e) {
       setEstado({ tipo: 'erro', mensagem: `A importação parou no meio: ${(e as Error).message}. O que já foi gravado continua salvo; você pode importar o mesmo arquivo de novo sem duplicar.` });
     }

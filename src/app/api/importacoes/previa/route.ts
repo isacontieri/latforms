@@ -1,7 +1,7 @@
 import { exigirFuncionario } from '@/lib/auth';
 import { falha, lerCorpo, ok } from '@/lib/http';
 import { PreviaSchema, planejarLote } from '@/lib/importacao/lote';
-import { buscarExistentes } from '@/lib/importacao/servidor';
+import { anexarAvisosDeDuplicidade, buscarExistentes } from '@/lib/importacao/servidor';
 import { extrairLinha } from '@/lib/rd/extrair';
 import { criarClienteServidor } from '@/lib/supabase/server';
 
@@ -17,7 +17,8 @@ export async function POST(req: Request) {
     const supabase = await criarClienteServidor();
     const rdIds = corpo.linhas.map((l) => extrairLinha(l).rdId).filter((id): id is string => id !== null);
     const existentes = await buscarExistentes(supabase, [...new Set(rdIds)]);
-    const { resultados } = planejarLote(corpo.linhas, corpo.inicio, existentes);
+    const { resultados, documentos } = planejarLote(corpo.linhas, corpo.inicio, existentes);
+    await anexarAvisosDeDuplicidade(supabase, documentos, resultados);
     return ok({ resultados });
   } catch (e) {
     console.error('importacao/previa', (e as Error).message);

@@ -36,11 +36,8 @@ export async function proxy(request: NextRequest) {
     url.search = '';
     return NextResponse.redirect(url);
   }
-  if (logado && pathname === '/login') {
-    const url = request.nextUrl.clone();
-    url.pathname = '/admin';
-    return NextResponse.redirect(url);
-  }
+  // Não redirecionar /login → /admin só porque há sessão: o getClaims confia no JWT, que continua válido por
+  // até 1 h depois de a conta ser removida; o /admin (getUser) mandaria de volta ao /login → loop.
 
   response.headers.set('Cache-Control', 'private, no-store');
   return response;

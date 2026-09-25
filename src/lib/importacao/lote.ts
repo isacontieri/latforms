@@ -76,6 +76,8 @@ export interface PlanoLote {
   salvar: ClienteParaSalvar[];
   /** Fichas ainda não devolvidas que recebem os dados novos do RD. */
   atualizarFichas: FichaParaAtualizar[];
+  /** CPF/e-mail de cada linha válida (para o aviso de possível duplicado). */
+  documentos: DocContato[];
 }
 
 /**
@@ -88,6 +90,7 @@ export function planejarLote(
   existentes: Map<string, ClienteExistente>,
 ): PlanoLote {
   const resultados: ResultadoLinha[] = [];
+  const documentos: DocContato[] = [];
   const porRdId = new Map<
     string,
     { cliente: ClienteParaSalvar; resultado: ResultadoLinha; atualizar: FichaParaAtualizar | null }
@@ -108,6 +111,7 @@ export function planejarLote(
     if (ext.erro || !ext.rdId) return;
 
     const dadosFicha = mapearParaFicha(ext.dados.campos);
+    documentos.push({ indice: inicio + i, rdId: ext.rdId, nome: ext.nome, cpf: ext.dados.campos.cpf as string | null, email: ext.email });
     const existente = existentes.get(ext.rdId);
     resultado.status = existente ? 'atualizado' : 'novo';
     const ficha = existente?.ficha ?? null;
@@ -132,6 +136,7 @@ export function planejarLote(
     resultados,
     salvar: valores.map((v) => v.cliente),
     atualizarFichas: valores.map((v) => v.atualizar).filter((a): a is FichaParaAtualizar => a !== null),
+    documentos,
   };
 }
 
@@ -157,4 +162,51 @@ export function resumir(resultados: ResultadoLinha[]) {
     fichasAtualizadas: resultados.filter((r) => r.ficha === 'atualizada').length,
     devolvidasComRdNovo: resultados.filter((r) => r.ficha === 'devolvida_rd_mudou').length,
   };
+}
+
+/** Identificação de um contato para achar a mesma pessoa com outro ID do RD. */
+export interface DocContato {
+  indice?: number;
+  rdId: string;
+  nome: string;
+  cpf: string | null;
+  email: string | null;
+}
+
+const chaveCpf = (cpf: string | null) => {
+  const d = (cpf ?? '').replace(/\D/g, '');
+  return d.length === 11 ? d : null;
+};
+const chaveEmail = (email: string | null) => email?.trim().toLowerCase() || null;
+
+/**
+ * Avisos de possível pessoa duplicada no RD: mesmo CPF ou e-mail com ID do RD diferente.
+ * `cadastrados`: clientes já no banco. `noArquivo`: compara também os contatos entre si.
+ * Só avisa — cada ID do RD continua sendo um cliente.
+ */
+export function avisosDeDuplicidade(itens: DocContato[], cadastrados: DocContato[], noArquivo: boolean): Map<number, string[]> {
+  const avisos = new Map<number, string[]>();
+  const add = (i: number, msg: string) => {
+    const l = avisos.get(i) ?? [];
+    if (!l.includes(msg)) l.push(msg);
+    avisos.set(i, l);
+  };
+
+  for (const item of itens) {
+    if (item.indice === undefined) continue;
+    const cpf = chaveCpf(item.cpf);
+    const email = chaveEmail(item.email);
+    for (const c of cadastrados) {
+      if (c.rdId === item.rdId) continue;
+      if (cpf && chaveCpf(c.cpf) === cpf) add(item.indice, `Possível duplicado: mesmo CPF de ${c.nome} (outro ID do RD)`);
+      if (email && chaveEmail(c.email) === email) add(item.indice, `Possível duplicado: mesmo e-mail de ${c.nome} (outro ID do RD)`);
+    }
+    if (!noArquivo) continue;
+    for (const o of itens) {
+      if (o.indice === undefined || o.indice === item.indice || o.rdId === item.rdId) continue;
+      if (cpf && chaveCpf(o.cpf) === cpf) add(item.indice, `Possível duplicado no arquivo: mesmo CPF do contato nº ${o.indice + 1} (${o.nome})`);
+      if (email && chaveEmail(o.email) === email) add(item.indice, `Possível duplicado no arquivo: mesmo e-mail do contato nº ${o.indice + 1} (${o.nome})`);
+    }
+  }
+  return avisos;
 }
