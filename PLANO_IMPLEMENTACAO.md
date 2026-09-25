@@ -335,6 +335,8 @@ A ficha contém **dados pessoais sensíveis** (saúde, CPF, passaporte).
 - `lib/ficha/pdf/read.ts`; tela de revisão com diff; aprovar / pedir correção / cancelar; exportar CSV.
 - ✅ PDF preenchido no Adobe Reader e reenviado é lido por completo (fixture real salva pelo Reader em `tests/fixtures/`).
 
+**Deploy de teste (25/09/2026):** https://latforms.vercel.app — Vercel Hobby da conta pessoal (`contieri/latforms`), repositório GitHub conectado (cada push em `main` publica sozinho), funções em `gru1`, usando o Supabase de desenvolvimento (projeto LatForms). Variáveis de produção enviadas com `vercel env add` (secret key e CRON_SECRET como sensíveis) e `APP_URL=https://latforms.vercel.app`. E2E de cliente e de equipe passaram contra o site publicado.
+
 ### Fase 7 — Operação gratuita e deploy (1 dia)
 - `vercel.json` com `regions` e `crons` (`/api/cron/manutencao`, 1x/dia).
 - `.github/workflows/backup.yml`: `pg_dump` diário do `latforms-prod` (cliente Postgres na **mesma versão major** do servidor, instalado pelo repositório PGDG) → `gpg --symmetric` → `actions/upload-artifact` (retenção 30 dias).
