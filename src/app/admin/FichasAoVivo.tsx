@@ -54,7 +54,8 @@ export function FichasAoVivo({ linhas }: { linhas: LinhaFicha[] }) {
         .on('broadcast', { event: 'campo_atualizado' }, atualizar)
         .on('broadcast', { event: 'status' }, atualizar)
         .on('broadcast', { event: 'revisado' }, atualizar)
-        .subscribe();
+        // o que mudou entre abrir a página e assinar o canal não se perde: recarrega ao assinar
+        .subscribe((s) => s === 'SUBSCRIBED' && atualizar());
     })();
     const relogio = setInterval(() => setAgora(Date.now()), 10_000);
     return () => {

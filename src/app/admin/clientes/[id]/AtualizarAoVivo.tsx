@@ -6,7 +6,8 @@ import { criarClienteNavegador } from '@/lib/supabase/client';
 
 /**
  * Mantém a página do cliente em dia com a ficha: escuta o canal PRIVADO ficha:<id> e, a cada edição,
- * mudança de status ou revisão, recarrega os dados do servidor (com folga de 1 s). Também ao voltar à aba.
+ * mudança de status ou revisão, recarrega os dados do servidor (com folga de 1 s). Também ao começar a ouvir o canal
+ * (o que mudou entre abrir a página e assinar não se perde) e ao voltar à aba.
  */
 export function AtualizarAoVivo({ fichaId }: { fichaId: string }) {
   const router = useRouter();
@@ -30,7 +31,7 @@ export function AtualizarAoVivo({ fichaId }: { fichaId: string }) {
         .on('broadcast', { event: 'campo_atualizado' }, atualizar)
         .on('broadcast', { event: 'status' }, atualizar)
         .on('broadcast', { event: 'revisado' }, atualizar)
-        .subscribe();
+        .subscribe((s) => s === 'SUBSCRIBED' && atualizar());
     })();
     const aoVoltar = () => document.visibilityState === 'visible' && atualizar();
     document.addEventListener('visibilitychange', aoVoltar);
