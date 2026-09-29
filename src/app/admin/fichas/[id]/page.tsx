@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
+import { Pagina } from '@/components/ui/Pagina';
 import { verificarConsultora } from '@/lib/auth';
 import { carregarEstadoFicha } from '@/lib/ficha/estado-servidor';
 import { proximoStatus } from '@/lib/ficha/status';
@@ -33,13 +33,7 @@ export default async function PaginaFichaAoVivo({ params }: PageProps<'/admin/fi
   const linkAtivo: LinkAtivo | null = token ? { expiraEm: token.expira_em, usos: token.usos, ultimoAcessoEm: token.ultimo_acesso_em } : null;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <Link href={`/admin/clientes/${cliente.id}`} className="text-sm underline underline-offset-4 hover:text-laranja">
-          ← {cliente.nome}
-        </Link>
-        <h1 className="text-2xl font-bold">Ficha de {cliente.nome}</h1>
-      </div>
+    <Pagina secao="Clientes" voltar={{ href: `/admin/clientes/${cliente.id}`, rotulo: 'Ficha ao vivo' }} titulo={cliente.nome}>
       <FichaAoVivo
         inicial={estado}
         rodape={
@@ -54,6 +48,6 @@ export default async function PaginaFichaAoVivo({ params }: PageProps<'/admin/fi
           />
         }
       />
-    </div>
+    </Pagina>
   );
 }

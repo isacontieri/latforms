@@ -12,7 +12,15 @@
   --color-alterado: #ffe58f;
   --color-alterado-borda: #e0a800;
   --color-editando: #2563eb;
+  /* painel das consultoras (mesma estética do Estoque Latitudes) */
+  --color-painel: #1e252d;
+  --color-painel-claro: #2a333d;
+  --color-painel-texto: #c3cbd4;
+  --color-painel-apagado: #7b8794;
+  --color-superficie: #f4f2ee;
+  --color-borda: #e3dfd7;
   --font-sans: var(--font-geist-sans);
+  --font-titulo: var(--font-barlow-condensed);
   --font-mono: var(--font-geist-mono);
 }
 

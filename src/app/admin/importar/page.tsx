@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
+import { Cartao } from '@/components/ui/Cartao';
+import { Pagina } from '@/components/ui/Pagina';
 import { verificarConsultora } from '@/lib/auth';
 import { ImportarCsv } from './ImportarCsv';
 
@@ -10,15 +12,14 @@ export default async function PaginaImportar() {
   if (!auth.ok) redirect('/login');
 
   return (
-    <section className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-bold text-laranja">Importar CSV do RD Station</h1>
-        <p className="text-sm">
-          Primeiro o sistema mostra uma prévia; nada é gravado até você confirmar. Contatos que já existem (mesmo ID do RD)
-          são atualizados, sem duplicar e sem mexer nas fichas já geradas.
-        </p>
-      </div>
-      <ImportarCsv />
-    </section>
+    <Pagina
+      secao="Fichas"
+      titulo="Importar CSV do RD Station"
+      descricao="Primeiro o sistema mostra uma prévia; nada é gravado até você confirmar. Contatos que já existem (mesmo ID do RD) são atualizados, sem duplicar."
+    >
+      <Cartao>
+        <ImportarCsv />
+      </Cartao>
+    </Pagina>
   );
 }

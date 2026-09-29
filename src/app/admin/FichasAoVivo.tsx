@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { clienteOnline } from '@/lib/ficha/estado';
-import { ROTULO_STATUS, type StatusFicha } from '@/lib/ficha/status';
+import { TABELA } from '@/components/ui/Cartao';
+import { SeloStatus } from '@/components/ui/SeloStatus';
+import type { StatusFicha } from '@/lib/ficha/status';
 import { criarClienteNavegador } from '@/lib/supabase/client';
 
 export interface LinhaFicha {
@@ -63,18 +65,20 @@ export function FichasAoVivo({ linhas }: { linhas: LinhaFicha[] }) {
     };
   }, [router]);
 
-  if (linhas.length === 0) return <p className="text-sm text-texto/60">Nenhuma ficha em andamento.</p>;
+  if (linhas.length === 0) return <p className="p-4 text-sm text-texto/60">Nenhuma ficha em andamento.</p>;
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[40rem] text-left text-sm" data-testid="fichas-ao-vivo">
-        <thead className="border-b border-campo text-xs">
+      <table className={`${TABELA.tabela} min-w-[44rem]`} data-testid="fichas-ao-vivo">
+        <thead>
           <tr>
-            <th className="py-2 pr-3 font-bold">Cliente</th>
-            <th className="py-2 pr-3 font-bold">Situação</th>
-            <th className="py-2 pr-3 font-bold">Preenchido</th>
-            <th className="py-2 pr-3 font-bold" title="Alterações do cliente ainda não revisadas">A revisar</th>
-            <th className="py-2 font-bold">Atualizada em</th>
+            <th className={TABELA.th}>Cliente</th>
+            <th className={TABELA.th}>Situação</th>
+            <th className={TABELA.th}>Preenchido</th>
+            <th className={TABELA.th} title="Campos alterados pelo cliente ainda não revisados">
+              A revisar
+            </th>
+            <th className={TABELA.th}>Atualizada em</th>
           </tr>
         </thead>
         <tbody>
@@ -82,8 +86,8 @@ export function FichasAoVivo({ linhas }: { linhas: LinhaFicha[] }) {
             const visto = [vistos[l.id], l.vistoEm].filter(Boolean).sort().at(-1) ?? null;
             const online = clienteOnline(visto, agora);
             return (
-              <tr key={l.id} className="border-b border-campo/60" data-ficha={l.id}>
-                <td className="py-2 pr-3">
+              <tr key={l.id} className={TABELA.tr} data-ficha={l.id}>
+                <td className={TABELA.td}>
                   <Link href={`/admin/fichas/${l.id}`} className="flex items-center gap-2 font-bold hover:text-laranja hover:underline">
                     <span
                       className={`h-2 w-2 shrink-0 rounded-full ${online ? 'bg-green-600' : 'bg-texto/20'}`}
@@ -93,12 +97,25 @@ export function FichasAoVivo({ linhas }: { linhas: LinhaFicha[] }) {
                     {l.cliente}
                   </Link>
                 </td>
-                <td className="py-2 pr-3" data-status={l.status}>{ROTULO_STATUS[l.status]}</td>
-                <td className="py-2 pr-3">{l.percentual}%</td>
-                <td className="py-2 pr-3">
-                  {l.alterados > 0 ? <span className="rounded-sm bg-alterado px-1.5 font-bold">{l.alterados}</span> : '0'}
+                <td className={TABELA.td}>
+                  <SeloStatus status={l.status} curto />
                 </td>
-                <td className="py-2">{formatarData.format(new Date(l.atualizadoEm))}</td>
+                <td className={TABELA.td}>
+                  <span className="flex items-center gap-2">
+                    <span className="h-1.5 w-16 overflow-hidden rounded-full bg-borda">
+                      <span className="block h-full bg-laranja" style={{ width: `${l.percentual}%` }} />
+                    </span>
+                    <span className="font-mono text-xs">{l.percentual}%</span>
+                  </span>
+                </td>
+                <td className={TABELA.td}>
+                  {l.alterados > 0 ? (
+                    <span className="rounded-sm bg-alterado px-1.5 font-bold">{l.alterados}</span>
+                  ) : (
+                    <span className="text-texto/40">0</span>
+                  )}
+                </td>
+                <td className={TABELA.data}>{formatarData.format(new Date(l.atualizadoEm))}</td>
               </tr>
             );
           })}

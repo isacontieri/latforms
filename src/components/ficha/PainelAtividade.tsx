@@ -2,7 +2,8 @@
 
 import { CAMPO_LAYOUT } from '@/lib/ficha/layout';
 import type { Edicao } from '@/lib/ficha/estado';
-import { ROTULO_STATUS, type StatusFicha } from '@/lib/ficha/status';
+import { SeloStatus } from '@/components/ui/SeloStatus';
+import type { StatusFicha } from '@/lib/ficha/status';
 
 const hora = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
 const dia = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' });
@@ -41,10 +42,10 @@ export function PainelAtividade({
   rodape?: React.ReactNode;
 }) {
   return (
-    <aside className="flex flex-col gap-5 text-sm" aria-label="Atividade da ficha">
+    <aside className="flex flex-col gap-5 rounded-sm border border-borda bg-white p-4 text-sm" aria-label="Atividade da ficha">
       <div className="flex flex-col gap-2">
-        <span className="w-fit rounded-full bg-campo px-2.5 py-0.5 text-xs font-bold" data-status={status}>
-          {ROTULO_STATUS[status]}
+        <span className="w-fit">
+          <SeloStatus status={status} />
         </span>
         <span className="flex items-center gap-1.5 text-xs text-texto/70" data-online={online}>
           <span className={`h-2 w-2 rounded-full ${online ? 'bg-green-600' : 'bg-texto/30'}`} aria-hidden />

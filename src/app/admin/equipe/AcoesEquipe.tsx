@@ -66,11 +66,11 @@ export function FormConvidar({ remetente }: { remetente: string }) {
       <form onSubmit={enviar} className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-56 flex-1 flex-col gap-1">
           <span className="text-xs font-bold">E-mail</span>
-          <input name="email" type="email" required className="h-10 rounded-sm bg-campo px-3 outline-none focus:ring-2 focus:ring-laranja" />
+          <input name="email" type="email" required className="h-10 rounded-sm border border-borda bg-white px-3 outline-none focus:border-laranja focus:ring-2 focus:ring-laranja/30" />
         </label>
         <label className="flex min-w-48 flex-1 flex-col gap-1">
           <span className="text-xs font-bold">Nome (opcional)</span>
-          <input name="nome" maxLength={120} className="h-10 rounded-sm bg-campo px-3 outline-none focus:ring-2 focus:ring-laranja" />
+          <input name="nome" maxLength={120} className="h-10 rounded-sm border border-borda bg-white px-3 outline-none focus:border-laranja focus:ring-2 focus:ring-laranja/30" />
         </label>
         <button
           type="submit"

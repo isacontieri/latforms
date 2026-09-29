@@ -5,7 +5,7 @@ import { problemasDaSenha } from '@/lib/equipe/senha';
 import { aceitarConvite, type EstadoConvite } from './actions';
 
 const inicial: EstadoConvite = { erro: null };
-const CAMPO = 'h-10 w-full rounded-sm bg-campo px-3 outline-none focus:ring-2 focus:ring-laranja';
+const CAMPO = 'h-11 w-full rounded-sm border border-borda bg-white px-3 outline-none focus:border-laranja focus:ring-2 focus:ring-laranja/30';
 
 export function FormConvite({
   token,

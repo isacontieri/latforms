@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
+import { Cartao } from '@/components/ui/Cartao';
+import { Pagina } from '@/components/ui/Pagina';
 import { verificarConsultora } from '@/lib/auth';
 import { criarClienteAdmin } from '@/lib/supabase/admin';
 import { AcoesFuncionario, BotaoRevogarConvite, FormConvidar } from './AcoesEquipe';
@@ -26,22 +28,19 @@ export default async function PaginaEquipe() {
   ]);
 
   return (
-    <div className="flex flex-col gap-10">
-      <section className="flex flex-col gap-3">
-        <h1 className="text-xl font-bold text-laranja">Equipe</h1>
-        <p className="text-sm">
-          Quem está aqui pode entrar no LatForms. Para dar acesso a alguém, gere um link de convite e envie pelo Outlook (o
-          botão abre um e-mail já escrito) ou pelo canal que preferir: a pessoa abre o link, informa o
-          nome e cria a senha.
-        </p>
+    <Pagina
+      secao="Administração"
+      titulo="Equipe"
+      descricao="Quem está aqui pode entrar no LatForms. Para dar acesso a alguém, gere um link de convite e envie pelo Outlook ou pelo canal que preferir: a pessoa abre o link, informa o nome e cria a senha."
+    >
+      <Cartao titulo="Convidar alguém">
         <FormConvidar remetente={auth.consultora.nome} />
-      </section>
+      </Cartao>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-bold text-laranja">Com acesso ({equipe?.length ?? 0})</h2>
-        <ul className="flex flex-col divide-y divide-campo rounded-sm border border-campo">
+      <Cartao titulo={`Com acesso (${equipe?.length ?? 0})`} semPadding>
+        <ul className="flex flex-col divide-y divide-borda">
           {(equipe ?? []).map((f) => (
-            <li key={f.id} className="flex flex-col gap-2 p-3">
+            <li key={f.id} className="flex flex-col gap-2 px-4 py-3">
               <div className="flex flex-wrap items-baseline gap-x-3">
                 <span className="font-bold">{f.nome}</span>
                 <span className="text-sm text-texto/70">{f.email ?? '—'}</span>
@@ -58,14 +57,13 @@ export default async function PaginaEquipe() {
             </li>
           ))}
         </ul>
-      </section>
+      </Cartao>
 
       {pendentes && pendentes.length > 0 && (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-lg font-bold text-laranja">Links pendentes ({pendentes.length})</h2>
-          <ul className="flex flex-col divide-y divide-campo rounded-sm border border-campo">
+        <Cartao titulo={`Links pendentes (${pendentes.length})`} semPadding>
+          <ul className="flex flex-col divide-y divide-borda">
             {pendentes.map((c) => (
-              <li key={c.id} className="flex flex-wrap items-baseline justify-between gap-2 p-3 text-sm">
+              <li key={c.id} className="flex flex-wrap items-baseline justify-between gap-2 px-4 py-3 text-sm">
                 <span>
                   <span className="font-bold">{c.tipo === 'convite' ? 'Convite' : 'Nova senha'}</span> · {c.nome ? `${c.nome} · ` : ''}
                   {c.email} · vale até {formatarData.format(new Date(c.expira_em))}
@@ -74,8 +72,8 @@ export default async function PaginaEquipe() {
               </li>
             ))}
           </ul>
-        </section>
+        </Cartao>
       )}
-    </div>
+    </Pagina>
   );
 }

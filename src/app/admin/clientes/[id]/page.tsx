@@ -1,10 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
+import { Cartao } from '@/components/ui/Cartao';
+import { Pagina } from '@/components/ui/Pagina';
+import { SeloStatus } from '@/components/ui/SeloStatus';
 import { verificarConsultora } from '@/lib/auth';
 import { mapearParaFicha } from '@/lib/ficha/mapping';
 import { DadosFichaSchema, type DadosFicha } from '@/lib/ficha/schema';
-import { ROTULO_STATUS, aceitaDadosDoRd, proximoStatus } from '@/lib/ficha/status';
+import { aceitaDadosDoRd, proximoStatus } from '@/lib/ficha/status';
 import { jsonIgual } from '@/lib/importacao/lote';
 import { COLUNAS_RD, type ChaveRd, type ColunaRd, type Grupo, type ValorCampo } from '@/lib/rd/colunas';
 import type { DadosRd } from '@/lib/rd/extrair';
@@ -76,37 +79,37 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
     : null;
 
   return (
-    <div className="flex flex-col gap-10">
-      <div className="flex flex-col gap-1">
-        <Link href="/admin" className="text-sm underline underline-offset-4 hover:text-laranja">← Clientes</Link>
-        <h1 className="text-2xl font-bold">{cliente.nome}</h1>
-        <p className="text-sm text-texto/70">
-          {cliente.email ?? 'sem e-mail'} · ID RD {cliente.rd_id} · atualizado em {formatarData.format(new Date(cliente.atualizado_em))}
-        </p>
-      </div>
-
+    <Pagina
+      secao="Clientes"
+      voltar={{ href: '/admin/clientes', rotulo: 'Cliente' }}
+      titulo={cliente.nome}
+      descricao={`${cliente.email ?? 'sem e-mail'} · ID RD ${cliente.rd_id} · atualizado em ${formatarData.format(new Date(cliente.atualizado_em))}`}
+    >
       {/* A ficha (uma por cliente) */}
-      <section className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-bold text-laranja">Ficha</h2>
-          {!ficha && <BotaoGerarFicha clienteId={cliente.id} rotulo="Gerar ficha" />}
-          {ficha && !clienteEditou && <BotaoGerarFicha clienteId={cliente.id} rotulo="Atualizar ficha com o RD" />}
-        </div>
+      <Cartao
+        titulo="Ficha"
+        acoes={
+          <>
+            {!ficha && <BotaoGerarFicha clienteId={cliente.id} rotulo="Gerar ficha" />}
+            {ficha && !clienteEditou && <BotaoGerarFicha clienteId={cliente.id} rotulo="Atualizar ficha com o RD" />}
+          </>
+        }
+      >
 
         {!ficha ? (
           <p className="text-sm">Nenhuma ficha gerada ainda.</p>
         ) : (
-          <div className="flex flex-col gap-2 rounded-sm border border-campo p-4 text-sm">
-            <div className="flex flex-wrap gap-x-8 gap-y-1">
-              <span><span className="font-bold">Situação:</span> {ROTULO_STATUS[ficha.status]}</span>
+          <div className="flex flex-col gap-3 text-sm">
+            <div className="flex flex-wrap items-center gap-x-8 gap-y-1">
+              <SeloStatus status={ficha.status} />
               <span><span className="font-bold">Criada em:</span> {formatarData.format(new Date(ficha.criado_em))}</span>
               <span><span className="font-bold">Última alteração:</span> {formatarData.format(new Date(ficha.atualizado_em))}</span>
             </div>
             <div className="flex flex-wrap gap-x-6 gap-y-1">
-              <Link href={`/admin/fichas/${ficha.id}`} className="font-bold text-laranja underline underline-offset-4">
+              <Link href={`/admin/fichas/${ficha.id}`} className="flex h-9 items-center rounded-sm bg-laranja px-4 font-bold text-white hover:bg-laranja-escuro">
                 Acompanhar ficha ao vivo
               </Link>
-              <a href={`/api/fichas/${ficha.id}/pdf`} className="font-bold text-laranja underline underline-offset-4">
+              <a href={`/api/fichas/${ficha.id}/pdf`} className="flex h-9 items-center rounded-sm border border-borda px-4 font-bold hover:border-texto/40">
                 Baixar PDF
               </a>
             </div>
@@ -135,39 +138,36 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
           </div>
         )}
         {canceladas.length > 0 && (
-          <p className="text-xs text-texto/60">{canceladas.length} ficha(s) cancelada(s) no histórico.</p>
+          <p className="mt-3 text-xs text-texto/60">{canceladas.length} ficha(s) cancelada(s) no histórico.</p>
         )}
-      </section>
+      </Cartao>
 
       {!versaoRd ? (
         <p className="text-sm text-red-700">Os dados do RD deste cliente estão incompletos. Reimporte o CSV.</p>
       ) : clienteEditou && dadosAtuais?.success ? (
         <>
-          <section className="flex flex-col gap-3">
-            <h2 className="text-lg font-bold text-laranja">Ficha agora</h2>
+          <Cartao titulo="Ficha agora">
             <DadosDaFicha
               dados={dadosAtuais.data}
               compararCom={DadosFichaSchema.safeParse(ficha.dados_originais).data ?? null}
               rotuloComparacao="alterado(s) pelo cliente em relação ao que veio do RD (destacados em laranja)."
             />
-          </section>
+          </Cartao>
           {rdMudouDepois && (
-            <section className="flex flex-col gap-3">
-              <h2 className="text-lg font-bold text-laranja">RD Station atual (só para comparação)</h2>
+            <Cartao titulo="RD Station atual (só para comparação)">
               <DadosDaFicha dados={versaoRd} compararCom={dadosAtuais.data} rotuloComparacao="da ficha atual (destacados em laranja)." />
-            </section>
+            </Cartao>
           )}
         </>
       ) : (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-lg font-bold text-laranja">Dados que vão para a ficha</h2>
+        <Cartao titulo="Dados que vão para a ficha">
           <DadosDaFicha dados={versaoRd} />
-        </section>
+        </Cartao>
       )}
 
       {/* Todas as colunas do RD */}
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-bold text-laranja">Todos os dados do RD Station</h2>
+      <Cartao titulo="Todos os dados do RD Station">
+        <div className="flex flex-col gap-3">
         {ORDEM_GRUPOS.map((grupo) => {
           const colunas = CHAVES_POR_GRUPO.get(grupo) ?? [];
           const preenchidas = colunas.filter((c) => {
@@ -177,7 +177,7 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
           const vazias = colunas.length - preenchidas.length;
           if (colunas.length === 0) return null;
           return (
-            <details key={grupo} open={preenchidas.length > 0} className="rounded-sm border border-campo p-3">
+            <details key={grupo} open={preenchidas.length > 0} className="rounded-sm border border-borda p-3">
               <summary className="cursor-pointer text-sm font-bold">
                 {grupo}{' '}
                 <span className="font-normal text-texto/60">
@@ -208,7 +208,7 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
         })}
 
         {extras.length > 0 && (
-          <details open className="rounded-sm border border-campo p-3">
+          <details open className="rounded-sm border border-borda p-3">
             <summary className="cursor-pointer text-sm font-bold">Outras colunas do RD ({extras.length})</summary>
             <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
               {extras.map(([coluna, valor]) => (
@@ -220,7 +220,8 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
             </dl>
           </details>
         )}
-      </section>
-    </div>
+        </div>
+      </Cartao>
+    </Pagina>
   );
 }

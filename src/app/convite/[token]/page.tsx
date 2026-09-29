@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Marca } from '@/components/Marca';
+import { CartaoAcesso } from '@/components/ui/CartaoAcesso';
 import { buscarConviteValido } from '@/lib/equipe/convites';
 import { FormConvite } from './FormConvite';
 
@@ -12,17 +12,16 @@ export default async function PaginaConvite({ params }: PageProps<'/convite/[tok
   const convite = await buscarConviteValido(token);
 
   return (
-    <main className="flex flex-1 items-center justify-center px-4 py-12">
-      <div className="w-full max-w-sm">
-        <Marca titulo="LatForms" />
+    <CartaoAcesso>
+      <div>
         {!convite ? (
-          <div className="mt-8 flex flex-col gap-2">
+          <div className="flex flex-col gap-2">
             <h1 className="text-lg font-bold">Link inválido ou expirado</h1>
             <p className="text-sm">Peça um novo link a alguém da equipe Latitudes.</p>
           </div>
         ) : (
           <>
-            <h1 className="mt-8 text-lg font-bold">
+            <h1 className="text-lg font-bold">
               {convite.tipo === 'convite' ? 'Crie seu acesso à equipe' : 'Defina uma nova senha'}
             </h1>
             <p className="mt-1 mb-6 text-sm text-texto/80">
@@ -34,6 +33,6 @@ export default async function PaginaConvite({ params }: PageProps<'/convite/[tok
           </>
         )}
       </div>
-    </main>
+    </CartaoAcesso>
   );
 }

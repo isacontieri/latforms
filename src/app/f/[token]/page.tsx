@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Marca } from '@/components/Marca';
+import { SeloLatitudesLab } from '@/components/SeloLatitudesLab';
 import { dentroDoLimiteIp, validarTokenCliente } from '@/lib/ficha/acesso-cliente';
 import { DadosFichaSchema } from '@/lib/ficha/schema';
 import { clienteVerificado } from '@/lib/ficha/verificacao';
@@ -14,7 +15,12 @@ export const dynamic = 'force-dynamic';
 const formatarData = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeZone: 'America/Sao_Paulo' });
 
 function Pagina({ children }: { children: React.ReactNode }) {
-  return <main className="mx-auto flex w-full max-w-[940px] flex-1 flex-col gap-6 px-4 py-8">{children}</main>;
+  return (
+    <>
+      <main className="mx-auto flex w-full max-w-[940px] flex-1 flex-col gap-6 px-4 py-8">{children}</main>
+      <SeloLatitudesLab />
+    </>
+  );
 }
 
 /**

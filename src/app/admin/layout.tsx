@@ -1,18 +1,9 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Marca } from '@/components/Marca';
+import { SeloLatitudesLab } from '@/components/SeloLatitudesLab';
+import { MarcaPainel } from '@/components/ui/MarcaPainel';
+import { NavLateral } from '@/components/ui/NavLateral';
 import { verificarConsultora } from '@/lib/auth';
 import { sair } from '../login/actions';
-
-function BotaoSair() {
-  return (
-    <form action={sair}>
-      <button type="submit" className="text-sm underline underline-offset-4 hover:text-laranja">
-        Sair
-      </button>
-    </form>
-  );
-}
 
 /**
  * Layout e página renderizam em paralelo: esta checagem só decide o que MOSTRAR.
@@ -24,34 +15,37 @@ export default async function LayoutAdmin({ children }: LayoutProps<'/admin'>) {
 
   if (!auth.ok) {
     return (
-      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center gap-4 px-4 py-12">
-        <Marca titulo="LatForms" />
-        <h1 className="text-lg font-bold">Acesso negado</h1>
-        <p className="text-sm">Sua conta existe, mas não está cadastrada como consultora do LatForms. Fale com a administração.</p>
-        <BotaoSair />
+      <main className="flex flex-1 items-center justify-center bg-painel px-4 py-12">
+        <div className="flex w-full max-w-sm flex-col gap-4 rounded-sm bg-white p-8 shadow-xl">
+          <MarcaPainel />
+          <h1 className="text-lg font-bold">Acesso negado</h1>
+          <p className="text-sm">Sua conta existe, mas não está cadastrada como consultora do LatForms. Fale com a administração.</p>
+          <form action={sair}>
+            <button type="submit" className="text-sm underline underline-offset-4 hover:text-laranja">
+              Sair
+            </button>
+          </form>
+        </div>
       </main>
     );
   }
 
   return (
-    <div className="flex flex-1 flex-col">
-      <header className="border-b border-campo">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4">
-          <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
-            <Marca titulo="LatForms" />
-            <nav className="flex gap-4 text-sm">
-              <Link href="/admin" className="hover:text-laranja">Clientes</Link>
-              <Link href="/admin/importar" className="hover:text-laranja">Importar CSV</Link>
-              <Link href="/admin/equipe" className="hover:text-laranja">Equipe</Link>
-            </nav>
-          </div>
-          <div className="flex items-center gap-4 text-sm">
-            <span>{auth.consultora.nome}</span>
-            <BotaoSair />
-          </div>
+    <div className="flex flex-1 flex-col bg-superficie lg:flex-row">
+      <aside className="flex shrink-0 flex-col gap-5 bg-painel px-3 py-4 lg:sticky lg:top-0 lg:h-screen lg:w-60 lg:gap-8 lg:py-6">
+        <div className="px-2">
+          <MarcaPainel escuro />
         </div>
-      </header>
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
+        <div className="border-t border-white/10 lg:hidden" />
+        <NavLateral />
+        <div className="mt-auto hidden flex-col gap-4 border-t border-white/10 px-2 pt-4 lg:flex">
+          <p className="text-xs text-painel-apagado">
+            Logado como <strong className="text-white">{auth.consultora.nome}</strong>
+          </p>
+          <SeloLatitudesLab variante="compacto" escuro />
+        </div>
+      </aside>
+      <main className="flex min-w-0 flex-1 flex-col">{children}</main>
     </div>
   );
 }

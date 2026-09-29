@@ -54,7 +54,7 @@ export function LinkDoCliente({
   const mensagem = gerado ? mensagemLinkCliente({ url: gerado.url, expiraEm: gerado.expiraEm, nomeCliente, remetente }) : null;
 
   return (
-    <div className="flex flex-col gap-2 border-t border-campo pt-3">
+    <div className="flex flex-col gap-2 border-t border-borda pt-3">
       <h2 className="text-xs font-bold tracking-wide text-texto/60 uppercase">Link do cliente</h2>
       {ativo ? (
         <p>

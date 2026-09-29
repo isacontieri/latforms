@@ -12,17 +12,17 @@ export function FormLogin() {
   return (
     <form action={acao} className="flex flex-col gap-5">
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-bold">E-mail</span>
+        <span className="text-xs font-bold tracking-[0.08em] text-texto/60 uppercase">E-mail</span>
         <input
           name="email"
           type="email"
           autoComplete="username"
           required
-          className="h-10 rounded-sm bg-campo px-3 outline-none focus:ring-2 focus:ring-laranja"
+          className="h-11 rounded-sm border border-borda bg-white px-3 outline-none focus:border-laranja focus:ring-2 focus:ring-laranja/30"
         />
       </label>
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="senha" className="text-sm font-bold">
+        <label htmlFor="senha" className="text-xs font-bold tracking-[0.08em] text-texto/60 uppercase">
           Senha
         </label>
         <div className="relative">
@@ -32,7 +32,7 @@ export function FormLogin() {
             type={mostrarSenha ? 'text' : 'password'}
             autoComplete="current-password"
             required
-            className="h-10 w-full rounded-sm bg-campo pr-20 pl-3 outline-none focus:ring-2 focus:ring-laranja"
+            className="h-11 w-full rounded-sm border border-borda bg-white pr-20 pl-3 outline-none focus:border-laranja focus:ring-2 focus:ring-laranja/30"
           />
           <button
             type="button"
@@ -54,7 +54,7 @@ export function FormLogin() {
       <button
         type="submit"
         disabled={enviando}
-        className="h-10 rounded-sm bg-laranja font-bold text-white hover:bg-laranja-escuro disabled:opacity-60"
+        className="h-11 rounded-sm bg-laranja font-bold text-white hover:bg-laranja-escuro disabled:opacity-60"
       >
         {enviando ? 'Entrando…' : 'Entrar'}
       </button>
