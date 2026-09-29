@@ -1,7 +1,7 @@
 name: Deploy Vercel (Latitudes)
 
 # A Vercel Hobby só aceita deploy automático pelo GitHub quando quem fez o commit é a dona da conta.
-# Por isso o deploy de produção roda aqui, pela CLI, com um token da conta Latitudes, sem enviar os dados do commit.
+# Por isso o deploy de produção é disparado aqui, pela CLI, com um token da conta Latitudes, sem enviar os dados do commit.
 # Roda só no repositório da empresa. Segredo: VERCEL_TOKEN. Variáveis: VERCEL_ORG_ID, VERCEL_PROJECT_ID.
 
 on:
@@ -33,12 +33,26 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
-      - name: Baixar configuração e variáveis de produção
-        run: npx --yes vercel@56 pull --yes --environment=production --token="$VERCEL_TOKEN"
-      - name: Build
-        run: npx --yes vercel@56 build --prod --token="$VERCEL_TOKEN"
-      - name: Deploy de produção
-        # sem a pasta .git a CLI não envia o autor do commit (a Vercel Hobby bloqueia autor que não é a dona da conta)
+      - name: Deploy de produção (build feito pela Vercel)
+        # O build roda na Vercel: as variáveis são "Sensitive" e não saem de lá (build no GitHub ficaria sem elas).
+        # Sem a pasta .git a CLI não envia o autor do commit (a Vercel Hobby bloqueia autor que não é a dona da conta).
         run: |
           rm -rf .git
-          npx --yes vercel@56 deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+          URL=$(npx --yes vercel@56 deploy --prod --yes --token="$VERCEL_TOKEN")
+          echo "Deploy: $URL"
+          # após um rollback a Vercel para de trocar a produção sozinha; promover garante que este deploy entra no ar
+          npx --yes vercel@56 promote "$URL" --yes --token="$VERCEL_TOKEN"
+      - name: Conferir produção
+        id: conferir
+        run: |
+          for i in 1 2 3 4 5 6; do
+            login=$(curl -s -o /dev/null -w '%{http_code}' https://latforms-latitudes.vercel.app/login)
+            ficha=$(curl -s -o /dev/null -w '%{http_code}' https://latforms-latitudes.vercel.app/f/token-invalido)
+            echo "login=$login f/token-invalido=$ficha"
+            [ "$login" = 200 ] && [ "$ficha" = 404 ] && exit 0
+            sleep 10
+          done
+          exit 1
+      - name: Voltar ao deploy anterior se a conferência falhar
+        if: failure() && steps.conferir.outcome == 'failure'
+        run: npx --yes vercel@56 rollback --yes --token="$VERCEL_TOKEN" || true
