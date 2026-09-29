@@ -7,7 +7,7 @@ import { mensagemDoLink } from '@/lib/equipe/mensagens';
 
 type Resposta<T> = { ok: boolean; data?: T; erro?: string };
 
-async function chamar<T>(url: string, metodo: 'POST' | 'DELETE', corpo?: unknown): Promise<T> {
+async function chamar<T>(url: string, metodo: 'POST' | 'DELETE' | 'PATCH', corpo?: unknown): Promise<T> {
   const r = await fetch(url, {
     method: metodo,
     headers: corpo ? { 'Content-Type': 'application/json' } : undefined,
@@ -92,18 +92,34 @@ export function AcoesFuncionario({
   email,
   ehVoce,
   remetente,
+  admin,
 }: {
   id: string;
   nome: string;
   email: string | null;
   ehVoce: boolean;
   remetente: string;
+  admin: boolean;
 }) {
   const router = useRouter();
   const [pendente, iniciar] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
   const [gerado, setGerado] = useState<LinkGerado | null>(null);
   const [confirmarRemocao, setConfirmarRemocao] = useState(false);
+  const [confirmarAdmin, setConfirmarAdmin] = useState(false);
+
+  const alterarAdmin = () =>
+    iniciar(async () => {
+      setErro(null);
+      try {
+        await chamar(`/api/equipe/${id}/admin`, 'PATCH', { admin: !admin });
+        setConfirmarAdmin(false);
+        router.refresh();
+      } catch (e) {
+        setErro((e as Error).message);
+        setConfirmarAdmin(false);
+      }
+    });
 
   const novaSenha = () =>
     iniciar(async () => {
@@ -135,6 +151,27 @@ export function AcoesFuncionario({
         <button type="button" onClick={novaSenha} disabled={pendente} className="underline underline-offset-4 hover:text-laranja">
           Link de nova senha
         </button>
+        {confirmarAdmin ? (
+          <span className="flex flex-wrap gap-3">
+            <span>
+              {admin
+                ? ehVoce
+                  ? 'Deixar de ser administrador? Você perde o acesso a estas ações.'
+                  : `Tirar ${nome} dos administradores?`
+                : `Tornar ${nome} administrador da equipe?`}
+            </span>
+            <button type="button" onClick={alterarAdmin} disabled={pendente} className="font-bold text-laranja-escuro underline underline-offset-4">
+              Sim
+            </button>
+            <button type="button" onClick={() => setConfirmarAdmin(false)} className="underline underline-offset-4">
+              Cancelar
+            </button>
+          </span>
+        ) : (
+          <button type="button" onClick={() => setConfirmarAdmin(true)} className="underline underline-offset-4 hover:text-laranja">
+            {admin ? 'Remover dos administradores' : 'Tornar administrador'}
+          </button>
+        )}
         {!ehVoce &&
           (confirmarRemocao ? (
             <span className="flex gap-3">

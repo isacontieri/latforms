@@ -26,7 +26,7 @@ Hospedagem: **Vercel Hobby + Supabase Free + GitHub Free. O projeto tem custo ze
 4. **Realtime só em canal privado** (`ficha:<id>`, `fichas:lista`) com política em `realtime.messages` restrita a consultoras. Nunca canal público nem Postgres Changes.
 5. **O banco é a fonte da verdade:** Realtime só avisa; ao montar, reconectar ou voltar à aba, o painel recarrega do banco.
 6. Escrita de campo **sempre** via RPC `atualizar_campo` (atômica + histórico); `PATCH /campos` aceita só chaves do `ficha-layout.json`, valor validado com zod.
-7. **Autorização não depende só do `proxy.ts`:** toda página/rota de consultora chama `verificarConsultora()`/`exigirConsultora()`. O proxy não intercepta `/f/*`, `/api/f/*`, `/api/cron/*`.
+7. **Autorização não depende só do `proxy.ts`:** toda página/rota de consultora chama `verificarConsultora()`/`exigirConsultora()`. O proxy não intercepta `/f/*`, `/api/f/*`, `/api/cron/*`. As rotas de equipe (`/api/equipe/*`: convite, nova senha, remover, tornar admin) exigem `exigirAdmin()` (`consultoras.admin`); o perfil de administrador não muda nada nas fichas.
 8. **Nunca logar valores de campos** nem conteúdo do CSV/`dados_rd` (dados de saúde = sensível LGPD). Só IDs e nomes de campo.
 9. **Não inferir dados de saúde** que o cliente não informou.
 10. Token inválido, expirado, revogado ou de ficha cancelada → **404 genérico**.

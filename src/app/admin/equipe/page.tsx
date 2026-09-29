@@ -17,7 +17,7 @@ export default async function PaginaEquipe() {
   // convites_equipe só é acessível pelo servidor (secret key); a checagem de consultora foi feita acima
   const admin = criarClienteAdmin();
   const [{ data: equipe }, { data: pendentes }] = await Promise.all([
-    admin.from('consultoras').select('id, nome, email, criado_em').order('nome'),
+    admin.from('consultoras').select('id, nome, email, admin, criado_em').order('nome'),
     admin
       .from('convites_equipe')
       .select('id, tipo, email, nome, expira_em, criado_em')
@@ -27,15 +27,28 @@ export default async function PaginaEquipe() {
       .order('criado_em', { ascending: false }),
   ]);
 
+  const souAdmin = auth.consultora.admin;
+
   return (
     <Pagina
       secao="Administração"
       titulo="Equipe"
-      descricao="Quem está aqui pode entrar no LatForms. Para dar acesso a alguém, gere um link de convite e envie pelo Outlook ou pelo canal que preferir: a pessoa abre o link, informa o nome e cria a senha."
+      descricao={
+        souAdmin
+          ? 'Quem está aqui pode entrar no LatForms. Para dar acesso a alguém, gere um link de convite e envie pelo Outlook ou pelo canal que preferir: a pessoa abre o link, informa o nome e cria a senha.'
+          : 'Quem está aqui pode entrar no LatForms.'
+      }
     >
-      <Cartao titulo="Convidar alguém">
-        <FormConvidar remetente={auth.consultora.nome} />
-      </Cartao>
+      {souAdmin ? (
+        <Cartao titulo="Convidar alguém">
+          <FormConvidar remetente={auth.consultora.nome} />
+        </Cartao>
+      ) : (
+        <p className="rounded-sm border border-borda bg-white p-4 text-sm text-texto/70" data-testid="aviso-admin">
+          Convidar pessoas, gerar links de nova senha e remover acessos são tarefas dos <strong>administradores da equipe</strong>{' '}
+          ({(equipe ?? []).filter((f) => f.admin).map((f) => f.nome).join(', ') || '—'}). Se você esqueceu a senha, peça a um deles.
+        </p>
+      )}
 
       <Cartao titulo={`Com acesso (${equipe?.length ?? 0})`} semPadding>
         <ul className="flex flex-col divide-y divide-borda">
@@ -44,22 +57,30 @@ export default async function PaginaEquipe() {
               <div className="flex flex-wrap items-baseline gap-x-3">
                 <span className="font-bold">{f.nome}</span>
                 <span className="text-sm text-texto/70">{f.email ?? '—'}</span>
+                {f.admin && (
+                  <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[11px] font-bold tracking-wide text-orange-700 uppercase" data-admin>
+                    Admin
+                  </span>
+                )}
                 {f.id === auth.consultora.id && <span className="text-xs text-laranja-escuro">(você)</span>}
                 <span className="text-xs text-texto/50">desde {formatarData.format(new Date(f.criado_em))}</span>
               </div>
-              <AcoesFuncionario
-                id={f.id}
-                nome={f.nome}
-                email={f.email}
-                ehVoce={f.id === auth.consultora.id}
-                remetente={auth.consultora.nome}
-              />
+              {souAdmin && (
+                <AcoesFuncionario
+                  id={f.id}
+                  nome={f.nome}
+                  email={f.email}
+                  ehVoce={f.id === auth.consultora.id}
+                  remetente={auth.consultora.nome}
+                  admin={f.admin}
+                />
+              )}
             </li>
           ))}
         </ul>
       </Cartao>
 
-      {pendentes && pendentes.length > 0 && (
+      {souAdmin && pendentes && pendentes.length > 0 && (
         <Cartao titulo={`Links pendentes (${pendentes.length})`} semPadding>
           <ul className="flex flex-col divide-y divide-borda">
             {pendentes.map((c) => (

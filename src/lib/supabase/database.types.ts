@@ -90,18 +90,21 @@ export type Database = {
       }
       consultoras: {
         Row: {
+          admin: boolean
           criado_em: string
           email: string | null
           id: string
           nome: string
         }
         Insert: {
+          admin?: boolean
           criado_em?: string
           email?: string | null
           id: string
           nome: string
         }
         Update: {
+          admin?: boolean
           criado_em?: string
           email?: string | null
           id?: string
@@ -390,6 +393,10 @@ export type Database = {
       consumir_rate_limit: {
         Args: { p_chave: string; p_janela_seg: number; p_limite: number }
         Returns: boolean
+      }
+      definir_admin: {
+        Args: { p_admin: boolean; p_alvo: string }
+        Returns: undefined
       }
       gerar_link: {
         Args: { p_expira_em: string; p_ficha_id: string; p_token_hash: string }

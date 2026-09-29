@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { registrarAuditoria } from '@/lib/audit';
-import { exigirConsultora } from '@/lib/auth';
+import { exigirAdmin } from '@/lib/auth';
 import { criarConvite } from '@/lib/equipe/convites';
 import { falha, lerCorpo, ok } from '@/lib/http';
 import { criarClienteAdmin } from '@/lib/supabase/admin';
@@ -12,7 +12,7 @@ const ConviteSchema = z.object({
 
 /** Convida uma pessoa para a equipe: devolve o link de uso único (mostrado uma vez). */
 export async function POST(req: Request) {
-  const consultora = await exigirConsultora();
+  const consultora = await exigirAdmin();
   if (consultora instanceof Response) return consultora;
 
   const corpo = await lerCorpo(req, ConviteSchema);

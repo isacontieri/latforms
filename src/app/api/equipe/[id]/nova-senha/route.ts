@@ -1,12 +1,12 @@
 import { registrarAuditoria } from '@/lib/audit';
-import { exigirConsultora } from '@/lib/auth';
+import { exigirAdmin } from '@/lib/auth';
 import { criarConvite } from '@/lib/equipe/convites';
 import { falha, ok } from '@/lib/http';
 import { criarClienteAdmin } from '@/lib/supabase/admin';
 
 /** Gera um link de uso único (24 h) para a consultora definir uma senha nova. Sem e-mail. */
 export async function POST(_req: Request, ctx: RouteContext<'/api/equipe/[id]/nova-senha'>) {
-  const consultora = await exigirConsultora();
+  const consultora = await exigirAdmin();
   if (consultora instanceof Response) return consultora;
   const { id } = await ctx.params;
 

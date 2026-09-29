@@ -1,11 +1,11 @@
 import { registrarAuditoria } from '@/lib/audit';
-import { exigirConsultora } from '@/lib/auth';
+import { exigirAdmin } from '@/lib/auth';
 import { falha, ok } from '@/lib/http';
 import { criarClienteAdmin } from '@/lib/supabase/admin';
 
 /** Revoga um link de convite ou de nova senha ainda não usado. */
 export async function DELETE(_req: Request, ctx: RouteContext<'/api/equipe/convites/[id]'>) {
-  const consultora = await exigirConsultora();
+  const consultora = await exigirAdmin();
   if (consultora instanceof Response) return consultora;
   const { id } = await ctx.params;
 

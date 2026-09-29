@@ -1,11 +1,11 @@
 import { registrarAuditoria } from '@/lib/audit';
-import { exigirConsultora } from '@/lib/auth';
+import { exigirAdmin } from '@/lib/auth';
 import { falha, ok } from '@/lib/http';
 import { criarClienteAdmin } from '@/lib/supabase/admin';
 
 /** Remove o acesso de uma consultora (apaga a conta; o histórico da auditoria continua). */
 export async function DELETE(_req: Request, ctx: RouteContext<'/api/equipe/[id]'>) {
-  const consultora = await exigirConsultora();
+  const consultora = await exigirAdmin();
   if (consultora instanceof Response) return consultora;
   const { id } = await ctx.params;
 
