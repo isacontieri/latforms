@@ -41,7 +41,10 @@ jobs:
           URL=$(npx --yes vercel@56 deploy --prod --yes --token="$VERCEL_TOKEN")
           echo "Deploy: $URL"
           # após um rollback a Vercel para de trocar a produção sozinha; promover garante que este deploy entra no ar
-          npx --yes vercel@56 promote "$URL" --yes --token="$VERCEL_TOKEN"
+          if ! saida=$(npx --yes vercel@56 promote "$URL" --yes --token="$VERCEL_TOKEN" 2>&1); then
+            echo "$saida" | grep -q "already the current production deployment" || { echo "$saida"; exit 1; }
+          fi
+          echo "Produção: $URL"
       - name: Conferir produção
         id: conferir
         run: |
