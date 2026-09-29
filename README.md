@@ -85,6 +85,21 @@ Para testar: Actions → "Backup do banco" → Run workflow.
    `pg_restore --no-owner --no-privileges --clean --if-exists -d "<SUPABASE_DB_URL do destino>" latforms.dump`
 4. Apagar o `.dump` descriptografado depois (contém dados pessoais e de saúde).
 
+## Repositórios
+
+O código fica em dois repositórios privados, sempre iguais:
+
+- **github.com/isacontieri/latforms**: origem. A Vercel (`latforms.vercel.app`) e o backup diário estão ligados a ele.
+- **github.com/LatitudesViagens/LatForms**: repositório da empresa, usado para publicar na Azure com os domínios da Latitudes.
+
+O `origin` local envia para os dois de uma vez (`git push` atualiza ambos):
+
+```bash
+git remote set-url --add --push origin https://github.com/isacontieri/latforms.git
+git remote set-url --add --push origin https://github.com/LatitudesViagens/LatForms.git
+git remote -v   # 1 fetch (isacontieri) e 2 push
+```
+
 ## CI
 
 `.github/workflows/ci.yml` roda lint, typecheck e testes unitários em todo push na `main`/`v3` e em pull requests.

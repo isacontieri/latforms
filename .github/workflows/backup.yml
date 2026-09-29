@@ -14,6 +14,8 @@ permissions:
 
 jobs:
   backup:
+    # só no repositório de origem (o da empresa é espelho e não tem os segredos do backup)
+    if: github.repository == 'isacontieri/latforms'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
