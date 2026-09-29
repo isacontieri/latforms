@@ -20,7 +20,26 @@ export interface FichaGerada {
   pdf: Uint8Array;
   /** Avisos sem conteúdo dos campos (só a chave e o problema). */
   avisos: string[];
+  /** Onde cada campo ficou (pt, origem no canto inferior esquerdo) — base do ficha-layout.json. */
+  posicoes: PosicaoCampo[];
 }
+
+export interface PosicaoCampo {
+  chave: string;
+  /** Índice da página (0 = primeira). */
+  pagina: number;
+  x: number;
+  y: number;
+  largura: number;
+  altura: number;
+}
+
+export interface OpcoesGeracao {
+  /** Só o fundo (rótulos, títulos, logo), sem os campos: vira a imagem de fundo da ficha web. */
+  semCampos?: boolean;
+}
+
+export const DIMENSOES_PAGINA = { largura: 595.28, altura: 841.89 };
 
 export const PLACEHOLDER_DROPDOWN = '---Selecione---';
 /** Assunto gravado no PDF para identificar a versão do modelo. */
@@ -129,7 +148,7 @@ function ajustarFonte(campo: PDFTextField, texto: string, fonte: PDFFont, largur
  * Gera a Ficha de Cadastro inteira (várias páginas A4) com os campos editáveis já preenchidos.
  * NUNCA chama `form.flatten()`: o cliente confere e completa no próprio PDF.
  */
-export async function gerarFicha(dados: DadosFicha, recursos: RecursosFicha): Promise<FichaGerada> {
+export async function gerarFicha(dados: DadosFicha, recursos: RecursosFicha, opcoes: OpcoesGeracao = {}): Promise<FichaGerada> {
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit);
   const fontes: Fontes = {
@@ -141,6 +160,7 @@ export async function gerarFicha(dados: DadosFicha, recursos: RecursosFicha): Pr
   const logo = await pdf.embedPng(recursos.logoPng);
   const form = pdf.getForm();
   const avisos: string[] = [];
+  const posicoes: PosicaoCampo[] = [];
 
   let page = novaPagina(pdf, fontes, logo, true);
   let y = cabecalhoPrincipal(page, fontes, logo);
@@ -154,7 +174,8 @@ export async function gerarFicha(dados: DadosFicha, recursos: RecursosFicha): Pr
 
   for (const secao of SECOES_FICHA) {
     const linhas = secao.linhas.map((chaves) => medirLinha(chaves.map((k) => CAMPO_POR_CHAVE.get(k)!), fontes));
-    quebraSeNecessario(34 + linhas[0].altura); // título nunca fica sozinho no pé da página
+    // título (14 + 16 + 10 pt) nunca fica sozinho no pé da página: reserva também a 1ª linha
+    quebraSeNecessario(40 + linhas[0].altura);
     y -= 14;
     page.drawText(secao.titulo.toUpperCase(), { x: MARGEM_X, y: y - 11, size: 11, font: fontes.negrito, color: LARANJA });
     y -= 16;
@@ -168,7 +189,7 @@ export async function gerarFicha(dados: DadosFicha, recursos: RecursosFicha): Pr
         linha.celulas.length === 1 && linha.celulas[0].campo.tipo === 'simNao' &&
         proxima?.celulas.length === 1 && proxima.celulas[0].campo.tipo === 'multilinha';
       quebraSeNecessario(linha.altura + (perguntaComDescricao ? ESPACO_LINHA + proxima.altura : 0));
-      desenharLinha(page, linha, y, fontes, form, dados, avisos);
+      desenharLinha(page, linha, y, fontes, { form: opcoes.semCampos ? null : form, dados, avisos, posicoes, pagina: pdf.getPageCount() - 1 });
       y -= linha.altura + ESPACO_LINHA;
     }
   }
@@ -190,7 +211,7 @@ export async function gerarFicha(dados: DadosFicha, recursos: RecursosFicha): Pr
   pdf.setAuthor('Latitudes');
   pdf.setProducer('LatForms — Latitudes');
   pdf.setCreator('LatForms');
-  return { pdf: await pdf.save(), avisos };
+  return { pdf: await pdf.save(), avisos, posicoes };
 }
 
 function novaPagina(pdf: PDFDocument, f: Fontes, logo: PDFImage, primeira: boolean): PDFPage {
@@ -222,13 +243,10 @@ function cabecalhoPrincipal(page: PDFPage, f: Fontes, logo: PDFImage): number {
     [
       {
         texto:
-          'As informações presentes nesta ficha são confidenciais e de extrema importância para a organização da viagem. ' +
-          'Por gentileza, confira os dados já preenchidos e complete os que faltam. Ao terminar, salve o arquivo no seu ' +
-          'computador e envie pelo mesmo link em que você o recebeu.',
+          'As informações presentes nesta ficha são confidenciais e de extrema importância para a organização da viagem.',
         fonte: f.regular,
         cor: TEXTO,
       },
-      { texto: 'Por favor, não preencher à mão.', fonte: f.italico, cor: LARANJA },
     ],
     MARGEM_X,
     ALTURA - 27 - logoH - 22,
@@ -269,15 +287,20 @@ function medirLinha(campos: CampoFicha[], f: Fontes): LinhaMedida {
   return { celulas, alturaRotulo, altura: Math.max(...alturas) };
 }
 
-function desenharLinha(
-  page: PDFPage,
-  linha: LinhaMedida,
-  yTopo: number,
-  f: Fontes,
-  form: ReturnType<PDFDocument['getForm']>,
-  dados: DadosFicha,
-  avisos: string[],
-) {
+interface ContextoLinha {
+  /** null = só o fundo (não cria os campos, mas registra a posição). */
+  form: ReturnType<PDFDocument['getForm']> | null;
+  dados: DadosFicha;
+  avisos: string[];
+  posicoes: PosicaoCampo[];
+  pagina: number;
+}
+
+function desenharLinha(page: PDFPage, linha: LinhaMedida, yTopo: number, f: Fontes, ctx: ContextoLinha) {
+  const { form, dados, avisos } = ctx;
+  const registrar = (chave: string, r: { x: number; y: number; width: number; height: number }) =>
+    ctx.posicoes.push({ chave, pagina: ctx.pagina, x: r.x, y: r.y, largura: r.width, altura: r.height });
+
   for (const c of linha.celulas) {
     const { campo } = c;
     const valor = dados[campo.chave as keyof DadosFicha] ?? null;
@@ -296,12 +319,14 @@ function desenharLinha(
         }),
       );
       const opcoes = campo.tipo === 'simNao' ? [...SIM_NAO] : [...(campo.opcoes ?? [])];
-      criarDropdown(form, page, campo, opcoes, valor, avisos, {
+      const retLista = {
         x: c.x + c.largura - LARGURA_DROPDOWN_SN,
         y: yTopo - (alturaCelula + ALTURA_CAMPO) / 2,
         width: LARGURA_DROPDOWN_SN,
         height: ALTURA_CAMPO,
-      }, f);
+      };
+      registrar(campo.chave, retLista);
+      if (form) criarDropdown(form, page, campo, opcoes, valor, avisos, retLista, f);
       continue;
     }
 
@@ -310,6 +335,8 @@ function desenharLinha(
     );
     const altura = campo.tipo === 'multilinha' ? ALTURA_MULTILINHA : ALTURA_CAMPO;
     const ret = { x: c.x, y: yTopo - linha.alturaRotulo - 3 - altura, width: c.largura, height: altura };
+    registrar(campo.chave, ret);
+    if (!form) continue;
 
     if (campo.tipo === 'opcoes') {
       criarDropdown(form, page, campo, [...(campo.opcoes ?? [])], valor, avisos, ret, f);

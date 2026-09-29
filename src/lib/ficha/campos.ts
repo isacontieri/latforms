@@ -136,6 +136,22 @@ export const CAMPOS_FICHA = [
 
 export type ChaveFicha = (typeof CAMPOS_FICHA)[number]['chave'];
 
+/** Formato de campos de texto: máscara e validação na ficha web (vai para o ficha-layout.json). */
+export type FormatoCampo = 'data' | 'cpf' | 'cep' | 'telefone' | 'email';
+export const FORMATO_POR_CHAVE: Partial<Record<ChaveFicha, FormatoCampo>> = {
+  nascimento: 'data',
+  passaporteEmissao: 'data',
+  passaporteExpiracao: 'data',
+  ultimoCheckup: 'data',
+  cpf: 'cpf',
+  cep: 'cep',
+  telefone: 'telefone',
+  emergenciaTelefone: 'telefone',
+  medicoTelefone: 'telefone',
+  email: 'email',
+  emergenciaEmail: 'email',
+};
+
 export const CAMPO_POR_CHAVE = new Map<string, CampoFicha>(CAMPOS_FICHA.map((c) => [c.chave, c]));
 
 /** Agrupamento visual. Toda chave de CAMPOS_FICHA aparece exatamente uma vez. */

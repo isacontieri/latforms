@@ -1,0 +1,1122 @@
+{
+  "modelo": "LatForms — Ficha de Cadastro v2",
+  "pagina": {
+    "largura_pt": 595.28,
+    "altura_pt": 841.89,
+    "proporcao": 1.414
+  },
+  "paginas": [
+    {
+      "numero": 1,
+      "fundo": "pagina-1.webp"
+    },
+    {
+      "numero": 2,
+      "fundo": "pagina-2.webp"
+    },
+    {
+      "numero": 3,
+      "fundo": "pagina-3.webp"
+    },
+    {
+      "numero": 4,
+      "fundo": "pagina-4.webp"
+    }
+  ],
+  "fonte": {
+    "texto_pt": 10,
+    "select_pt": 10
+  },
+  "campos": [
+    {
+      "chave": "nome",
+      "rotulo": "Nome completo",
+      "tipo": "texto",
+      "campoPdf": "nome",
+      "secao": "Dados pessoais",
+      "pagina": 1,
+      "pos": {
+        "left": 6.048,
+        "top": 19.968,
+        "width": 65.425,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "nascimento",
+      "rotulo": "Data de nascimento",
+      "tipo": "data",
+      "campoPdf": "nascimento",
+      "formato": "data",
+      "secao": "Dados pessoais",
+      "pagina": 1,
+      "pos": {
+        "left": 73.488,
+        "top": 19.968,
+        "width": 20.464,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "apelido",
+      "rotulo": "Como gostaria de ser chamado(a) durante a viagem?",
+      "tipo": "texto",
+      "campoPdf": "apelido",
+      "secao": "Dados pessoais",
+      "pagina": 1,
+      "pos": {
+        "left": 6.048,
+        "top": 24.838,
+        "width": 42.944,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "nacionalidade",
+      "rotulo": "Nacionalidade",
+      "tipo": "texto",
+      "campoPdf": "nacionalidade",
+      "secao": "Dados pessoais",
+      "pagina": 1,
+      "pos": {
+        "left": 51.008,
+        "top": 24.838,
+        "width": 20.464,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "estadoCivil",
+      "rotulo": "Estado civil",
+      "tipo": "select",
+      "campoPdf": "estadoCivil",
+      "opcoes": [
+        "Solteiro",
+        "Casado",
+        "Separado",
+        "Divorciado",
+        "Viúvo"
+      ],
+      "secao": "Dados pessoais",
+      "pagina": 1,
+      "pos": {
+        "left": 73.488,
+        "top": 24.838,
+        "width": 20.464,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "cpf",
+      "rotulo": "CPF",
+      "tipo": "texto",
+      "campoPdf": "cpf",
+      "formato": "cpf",
+      "secao": "Dados pessoais",
+      "pagina": 1,
+      "pos": {
+        "left": 6.048,
+        "top": 29.708,
+        "width": 20.464,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "rg",
+      "rotulo": "RG",
+      "tipo": "texto",
+      "campoPdf": "rg",
+      "secao": "Dados pessoais",
+      "pagina": 1,
+      "pos": {
+        "left": 28.528,
+        "top": 29.708,
+        "width": 27.958,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "rne",
+      "rotulo": "RNE (caso não seja estrangeiro, desconsidere)",
+      "tipo": "texto",
+      "campoPdf": "rne",
+      "secao": "Dados pessoais",
+      "pagina": 1,
+      "pos": {
+        "left": 58.501,
+        "top": 29.708,
+        "width": 35.451,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "telefone",
+      "rotulo": "Telefone celular (com DDD ou DDI)",
+      "tipo": "texto",
+      "campoPdf": "telefone",
+      "formato": "telefone",
+      "secao": "Contato",
+      "pagina": 1,
+      "pos": {
+        "left": 6.048,
+        "top": 39.329,
+        "width": 35.451,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "email",
+      "rotulo": "E-mail",
+      "tipo": "texto",
+      "campoPdf": "email",
+      "formato": "email",
+      "secao": "Contato",
+      "pagina": 1,
+      "pos": {
+        "left": 43.515,
+        "top": 39.329,
+        "width": 50.438,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "preferenciaContato",
+      "rotulo": "Como prefere ser contatada(o)",
+      "tipo": "texto",
+      "campoPdf": "preferenciaContato",
+      "secao": "Contato",
+      "pagina": 1,
+      "pos": {
+        "left": 6.048,
+        "top": 44.199,
+        "width": 35.451,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "comoConheceu",
+      "rotulo": "Como conheceu a Latitudes?",
+      "tipo": "texto",
+      "campoPdf": "comoConheceu",
+      "secao": "Contato",
+      "pagina": 1,
+      "pos": {
+        "left": 43.515,
+        "top": 44.199,
+        "width": 50.438,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "agenciaNome",
+      "rotulo": "Caso tenha sido através de uma agência de viagens, por favor indique o nome",
+      "tipo": "texto",
+      "campoPdf": "agenciaNome",
+      "secao": "Contato",
+      "pagina": 1,
+      "pos": {
+        "left": 6.048,
+        "top": 50.376,
+        "width": 42.944,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "midiaOrigem",
+      "rotulo": "Caso tenha sido através de mídia digital, por favor especifique qual",
+      "tipo": "texto",
+      "campoPdf": "midiaOrigem",
+      "secao": "Contato",
+      "pagina": 1,
+      "pos": {
+        "left": 51.008,
+        "top": 50.376,
+        "width": 42.944,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "endereco",
+      "rotulo": "Seu endereço",
+      "tipo": "texto",
+      "campoPdf": "endereco",
+      "secao": "Endereço",
+      "pagina": 1,
+      "pos": {
+        "left": 6.048,
+        "top": 59.997,
+        "width": 65.425,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "numero",
+      "rotulo": "Número",
+      "tipo": "texto",
+      "campoPdf": "numero",
+      "secao": "Endereço",
+      "pagina": 1,
+      "pos": {
+        "left": 73.488,
+        "top": 59.997,
+        "width": 20.464,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "complemento",
+      "rotulo": "Complemento",
+      "tipo": "texto",
+      "campoPdf": "complemento",
+      "secao": "Endereço",
+      "pagina": 1,
+      "pos": {
+        "left": 6.048,
+        "top": 64.867,
+        "width": 42.944,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "bairro",
+      "rotulo": "Bairro",
+      "tipo": "texto",
+      "campoPdf": "bairro",
+      "secao": "Endereço",
+      "pagina": 1,
+      "pos": {
+        "left": 51.008,
+        "top": 64.867,
+        "width": 42.944,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "cidade",
+      "rotulo": "Cidade",
+      "tipo": "texto",
+      "campoPdf": "cidade",
+      "secao": "Endereço",
+      "pagina": 1,
+      "pos": {
+        "left": 6.048,
+        "top": 69.737,
+        "width": 27.958,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "estado",
+      "rotulo": "Estado",
+      "tipo": "texto",
+      "campoPdf": "estado",
+      "secao": "Endereço",
+      "pagina": 1,
+      "pos": {
+        "left": 36.021,
+        "top": 69.737,
+        "width": 12.971,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "cep",
+      "rotulo": "CEP",
+      "tipo": "texto",
+      "campoPdf": "cep",
+      "formato": "cep",
+      "secao": "Endereço",
+      "pagina": 1,
+      "pos": {
+        "left": 51.008,
+        "top": 69.737,
+        "width": 20.464,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "pais",
+      "rotulo": "País",
+      "tipo": "texto",
+      "campoPdf": "pais",
+      "secao": "Endereço",
+      "pagina": 1,
+      "pos": {
+        "left": 73.488,
+        "top": 69.737,
+        "width": 20.464,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "passaporte",
+      "rotulo": "N° do passaporte",
+      "tipo": "texto",
+      "campoPdf": "passaporte",
+      "secao": "Passaporte",
+      "pagina": 1,
+      "pos": {
+        "left": 6.048,
+        "top": 79.358,
+        "width": 20.464,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "passaportePaisEmissor",
+      "rotulo": "País emissor",
+      "tipo": "texto",
+      "campoPdf": "passaportePaisEmissor",
+      "secao": "Passaporte",
+      "pagina": 1,
+      "pos": {
+        "left": 28.528,
+        "top": 79.358,
+        "width": 20.464,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "passaporteEmissao",
+      "rotulo": "Data de emissão",
+      "tipo": "data",
+      "campoPdf": "passaporteEmissao",
+      "formato": "data",
+      "secao": "Passaporte",
+      "pagina": 1,
+      "pos": {
+        "left": 51.008,
+        "top": 79.358,
+        "width": 20.464,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "passaporteExpiracao",
+      "rotulo": "Qual data de expiração?",
+      "tipo": "data",
+      "campoPdf": "passaporteExpiracao",
+      "formato": "data",
+      "secao": "Passaporte",
+      "pagina": 1,
+      "pos": {
+        "left": 73.488,
+        "top": 79.358,
+        "width": 20.464,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "temPassaporteEstrangeiro",
+      "rotulo": "Possui passaporte estrangeiro?",
+      "tipo": "select",
+      "campoPdf": "temPassaporteEstrangeiro",
+      "opcoes": [
+        "Sim",
+        "Não"
+      ],
+      "secao": "Passaporte",
+      "pagina": 1,
+      "pos": {
+        "left": 33.537,
+        "top": 82.565,
+        "width": 15.455,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "emergenciaNome",
+      "rotulo": "Nome do contato",
+      "tipo": "texto",
+      "campoPdf": "emergenciaNome",
+      "secao": "Contato de emergência",
+      "pagina": 2,
+      "pos": {
+        "left": 6.048,
+        "top": 15.679,
+        "width": 50.438,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "emergenciaParentesco",
+      "rotulo": "Grau de parentesco",
+      "tipo": "texto",
+      "campoPdf": "emergenciaParentesco",
+      "secao": "Contato de emergência",
+      "pagina": 2,
+      "pos": {
+        "left": 58.501,
+        "top": 15.679,
+        "width": 35.451,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "emergenciaTelefone",
+      "rotulo": "Telefone do contato de emergência (com DDD ou DDI)",
+      "tipo": "texto",
+      "campoPdf": "emergenciaTelefone",
+      "formato": "telefone",
+      "secao": "Contato de emergência",
+      "pagina": 2,
+      "pos": {
+        "left": 6.048,
+        "top": 21.856,
+        "width": 35.451,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "emergenciaEmail",
+      "rotulo": "E-mail (contato de emergência)",
+      "tipo": "texto",
+      "campoPdf": "emergenciaEmail",
+      "formato": "email",
+      "secao": "Contato de emergência",
+      "pagina": 2,
+      "pos": {
+        "left": 43.515,
+        "top": 21.856,
+        "width": 50.438,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "medicoNome",
+      "rotulo": "Nome do seu médico(a)",
+      "tipo": "texto",
+      "campoPdf": "medicoNome",
+      "secao": "Médico",
+      "pagina": 2,
+      "pos": {
+        "left": 6.048,
+        "top": 31.477,
+        "width": 50.438,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "medicoTelefone",
+      "rotulo": "Telefone do seu médico(a) (com DDD ou DDI)",
+      "tipo": "texto",
+      "campoPdf": "medicoTelefone",
+      "formato": "telefone",
+      "secao": "Médico",
+      "pagina": 2,
+      "pos": {
+        "left": 58.501,
+        "top": 31.477,
+        "width": 35.451,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "convenioMedico",
+      "rotulo": "Convênio médico",
+      "tipo": "texto",
+      "campoPdf": "convenioMedico",
+      "secao": "Médico",
+      "pagina": 2,
+      "pos": {
+        "left": 6.048,
+        "top": 36.347,
+        "width": 87.905,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "altura",
+      "rotulo": "Sua altura (cm)",
+      "tipo": "texto",
+      "campoPdf": "altura",
+      "secao": "Informações para a viagem",
+      "pagina": 2,
+      "pos": {
+        "left": 6.048,
+        "top": 45.968,
+        "width": 20.464,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "peso",
+      "rotulo": "Seu peso (kg)",
+      "tipo": "texto",
+      "campoPdf": "peso",
+      "secao": "Informações para a viagem",
+      "pagina": 2,
+      "pos": {
+        "left": 28.528,
+        "top": 45.968,
+        "width": 20.464,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "calcado",
+      "rotulo": "N° de calçado (Brasil)",
+      "tipo": "texto",
+      "campoPdf": "calcado",
+      "secao": "Informações para a viagem",
+      "pagina": 2,
+      "pos": {
+        "left": 51.008,
+        "top": 45.968,
+        "width": 20.464,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "tamanhoRoupa",
+      "rotulo": "Tamanho de roupa",
+      "tipo": "texto",
+      "campoPdf": "tamanhoRoupa",
+      "secao": "Informações para a viagem",
+      "pagina": 2,
+      "pos": {
+        "left": 73.488,
+        "top": 45.968,
+        "width": 20.464,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "idiomas",
+      "rotulo": "Fala outro(s) idioma(s)? Caso sim, qual/quais?",
+      "tipo": "texto",
+      "campoPdf": "idiomas",
+      "secao": "Informações para a viagem",
+      "pagina": 2,
+      "pos": {
+        "left": 6.048,
+        "top": 50.838,
+        "width": 50.438,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "assento",
+      "rotulo": "Preferência de assento nos voos",
+      "tipo": "texto",
+      "campoPdf": "assento",
+      "secao": "Informações para a viagem",
+      "pagina": 2,
+      "pos": {
+        "left": 58.501,
+        "top": 50.838,
+        "width": 35.451,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "tipoSanguineo",
+      "rotulo": "Tipo sanguíneo",
+      "tipo": "texto",
+      "campoPdf": "tipoSanguineo",
+      "secao": "Saúde",
+      "pagina": 2,
+      "pos": {
+        "left": 6.048,
+        "top": 60.459,
+        "width": 27.958,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "ultimoCheckup",
+      "rotulo": "Qual a data do seu último check-up?",
+      "tipo": "data",
+      "campoPdf": "ultimoCheckup",
+      "formato": "data",
+      "secao": "Saúde",
+      "pagina": 2,
+      "pos": {
+        "left": 36.021,
+        "top": 60.459,
+        "width": 57.931,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "seConsideraSaudavel",
+      "rotulo": "Você se considera saudável?",
+      "tipo": "select",
+      "campoPdf": "seConsideraSaudavel",
+      "opcoes": [
+        "Sim",
+        "Não"
+      ],
+      "secao": "Saúde",
+      "pagina": 2,
+      "pos": {
+        "left": 33.537,
+        "top": 63.666,
+        "width": 15.455,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "praticaAtividadeFisica",
+      "rotulo": "Você pratica atividade física com frequência?",
+      "tipo": "select",
+      "campoPdf": "praticaAtividadeFisica",
+      "opcoes": [
+        "Sim",
+        "Não"
+      ],
+      "secao": "Saúde",
+      "pagina": 2,
+      "pos": {
+        "left": 78.498,
+        "top": 63.904,
+        "width": 15.455,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "sabeNadar",
+      "rotulo": "Você sabe nadar?",
+      "tipo": "select",
+      "campoPdf": "sabeNadar",
+      "opcoes": [
+        "Sim",
+        "Não"
+      ],
+      "secao": "Saúde",
+      "pagina": 2,
+      "pos": {
+        "left": 33.537,
+        "top": 67.348,
+        "width": 15.455,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "condicionamentoFisico",
+      "rotulo": "Condicionamento físico",
+      "tipo": "select",
+      "campoPdf": "condicionamentoFisico",
+      "opcoes": [
+        "Ótimo",
+        "Bom",
+        "Razoável",
+        "Ruim"
+      ],
+      "secao": "Saúde",
+      "pagina": 2,
+      "pos": {
+        "left": 78.498,
+        "top": 67.348,
+        "width": 15.455,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "diabetico",
+      "rotulo": "Diabético(a)?",
+      "tipo": "select",
+      "campoPdf": "diabetico",
+      "opcoes": [
+        "Sim",
+        "Não"
+      ],
+      "secao": "Saúde",
+      "pagina": 2,
+      "pos": {
+        "left": 33.537,
+        "top": 70.556,
+        "width": 15.455,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "disturbioCardioRespiratorio",
+      "rotulo": "Distúrbio cardio-respiratório?",
+      "tipo": "select",
+      "campoPdf": "disturbioCardioRespiratorio",
+      "opcoes": [
+        "Sim",
+        "Não"
+      ],
+      "secao": "Saúde",
+      "pagina": 2,
+      "pos": {
+        "left": 78.498,
+        "top": 70.556,
+        "width": 15.455,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "temRestricaoFisica",
+      "rotulo": "Você tem alguma restrição física, de mobilidade ou alguma condição que queira nos comunicar?",
+      "tipo": "select",
+      "campoPdf": "temRestricaoFisica",
+      "opcoes": [
+        "Sim",
+        "Não"
+      ],
+      "secao": "Saúde",
+      "pagina": 2,
+      "pos": {
+        "left": 78.498,
+        "top": 73.763,
+        "width": 15.455,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "restricaoFisicaDescricao",
+      "rotulo": "Por favor, descreva alguma restrição física ou de mobilidade:",
+      "tipo": "textoLongo",
+      "campoPdf": "restricaoFisicaDescricao",
+      "secao": "Saúde",
+      "pagina": 2,
+      "pos": {
+        "left": 6.048,
+        "top": 78.633,
+        "width": 87.905,
+        "height": 4.276
+      }
+    },
+    {
+      "chave": "temDoencaCronica",
+      "rotulo": "É portador(a) de alguma doença crônica ou patologia?",
+      "tipo": "select",
+      "campoPdf": "temDoencaCronica",
+      "opcoes": [
+        "Sim",
+        "Não"
+      ],
+      "secao": "Saúde",
+      "pagina": 2,
+      "pos": {
+        "left": 78.498,
+        "top": 83.978,
+        "width": 15.455,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "doencaCronicaDescricao",
+      "rotulo": "Por favor, descreva sua doença crônica ou patologia:",
+      "tipo": "textoLongo",
+      "campoPdf": "doencaCronicaDescricao",
+      "secao": "Saúde",
+      "pagina": 2,
+      "pos": {
+        "left": 6.048,
+        "top": 88.848,
+        "width": 87.905,
+        "height": 4.276
+      }
+    },
+    {
+      "chave": "usaMedicamento",
+      "rotulo": "Faz uso de medicamento contínuo?",
+      "tipo": "select",
+      "campoPdf": "usaMedicamento",
+      "opcoes": [
+        "Sim",
+        "Não"
+      ],
+      "secao": "Saúde",
+      "pagina": 3,
+      "pos": {
+        "left": 78.498,
+        "top": 9.265,
+        "width": 15.455,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "medicamentosDescricao",
+      "rotulo": "Por favor, descreva os medicamentos de uso contínuo:",
+      "tipo": "textoLongo",
+      "campoPdf": "medicamentosDescricao",
+      "secao": "Saúde",
+      "pagina": 3,
+      "pos": {
+        "left": 6.048,
+        "top": 14.135,
+        "width": 87.905,
+        "height": 4.276
+      }
+    },
+    {
+      "chave": "fezCirurgia",
+      "rotulo": "Já fez alguma cirurgia?",
+      "tipo": "select",
+      "campoPdf": "fezCirurgia",
+      "opcoes": [
+        "Sim",
+        "Não"
+      ],
+      "secao": "Saúde",
+      "pagina": 3,
+      "pos": {
+        "left": 78.498,
+        "top": 19.48,
+        "width": 15.455,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "cirurgiaDescricao",
+      "rotulo": "Descreva o motivo e a data do procedimento",
+      "tipo": "textoLongo",
+      "campoPdf": "cirurgiaDescricao",
+      "secao": "Saúde",
+      "pagina": 3,
+      "pos": {
+        "left": 6.048,
+        "top": 24.35,
+        "width": 87.905,
+        "height": 4.276
+      }
+    },
+    {
+      "chave": "temQuestaoMedica",
+      "rotulo": "Há alguma questão médica relevante que queira nos comunicar?",
+      "tipo": "select",
+      "campoPdf": "temQuestaoMedica",
+      "opcoes": [
+        "Sim",
+        "Não"
+      ],
+      "secao": "Saúde",
+      "pagina": 3,
+      "pos": {
+        "left": 78.498,
+        "top": 29.695,
+        "width": 15.455,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "questaoMedicaDescricao",
+      "rotulo": "Por favor, descreva alguma questão médica relevante que queira nos comunicar:",
+      "tipo": "textoLongo",
+      "campoPdf": "questaoMedicaDescricao",
+      "secao": "Saúde",
+      "pagina": 3,
+      "pos": {
+        "left": 6.048,
+        "top": 34.565,
+        "width": 87.905,
+        "height": 4.276
+      }
+    },
+    {
+      "chave": "temAlergia",
+      "rotulo": "Possui alergias?",
+      "tipo": "select",
+      "campoPdf": "temAlergia",
+      "opcoes": [
+        "Sim",
+        "Não"
+      ],
+      "secao": "Saúde",
+      "pagina": 3,
+      "pos": {
+        "left": 78.498,
+        "top": 39.91,
+        "width": 15.455,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "alergiasDescricao",
+      "rotulo": "Por favor, descreva suas alergias:",
+      "tipo": "textoLongo",
+      "campoPdf": "alergiasDescricao",
+      "secao": "Saúde",
+      "pagina": 3,
+      "pos": {
+        "left": 6.048,
+        "top": 44.78,
+        "width": 87.905,
+        "height": 4.276
+      }
+    },
+    {
+      "chave": "vacinas",
+      "rotulo": "Vacinas que você já tomou:",
+      "tipo": "texto",
+      "campoPdf": "vacinas",
+      "secao": "Saúde",
+      "pagina": 3,
+      "pos": {
+        "left": 6.048,
+        "top": 51.788,
+        "width": 87.905,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "acompanhamentoPsiquiatrico",
+      "rotulo": "Você fez acompanhamento psiquiátrico nos últimos 2 anos ou está atualmente em tratamento?",
+      "tipo": "select",
+      "campoPdf": "acompanhamentoPsiquiatrico",
+      "opcoes": [
+        "Sim",
+        "Não"
+      ],
+      "secao": "Saúde",
+      "pagina": 3,
+      "pos": {
+        "left": 78.498,
+        "top": 54.995,
+        "width": 15.455,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "tratamentoOdontologico",
+      "rotulo": "Tratamento odontológico?",
+      "tipo": "select",
+      "campoPdf": "tratamentoOdontologico",
+      "opcoes": [
+        "Sim",
+        "Não"
+      ],
+      "secao": "Saúde",
+      "pagina": 3,
+      "pos": {
+        "left": 78.498,
+        "top": 58.202,
+        "width": 15.455,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "segueDieta",
+      "rotulo": "Você segue alguma dieta?",
+      "tipo": "select",
+      "campoPdf": "segueDieta",
+      "opcoes": [
+        "Sim",
+        "Não"
+      ],
+      "secao": "Alimentação",
+      "pagina": 3,
+      "pos": {
+        "left": 78.498,
+        "top": 66.161,
+        "width": 15.455,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "alimentosNaoCome",
+      "rotulo": "Descreva alimentos que você não come por gosto, dieta ou restrição:",
+      "tipo": "textoLongo",
+      "campoPdf": "alimentosNaoCome",
+      "secao": "Alimentação",
+      "pagina": 3,
+      "pos": {
+        "left": 6.048,
+        "top": 71.031,
+        "width": 87.905,
+        "height": 4.276
+      }
+    },
+    {
+      "chave": "restricoesAlimentaresDescricao",
+      "rotulo": "Por favor, detalhe ao máximo suas restrições alimentares",
+      "tipo": "textoLongo",
+      "campoPdf": "restricoesAlimentaresDescricao",
+      "secao": "Alimentação",
+      "pagina": 3,
+      "pos": {
+        "left": 6.048,
+        "top": 78.039,
+        "width": 87.905,
+        "height": 4.276
+      }
+    },
+    {
+      "chave": "alergiaAlimentarDescricao",
+      "rotulo": "Por favor, descreva alimentos que você tem alergia e não pode ingerir em hipótese alguma:",
+      "tipo": "textoLongo",
+      "campoPdf": "alergiaAlimentarDescricao",
+      "secao": "Alimentação",
+      "pagina": 3,
+      "pos": {
+        "left": 6.048,
+        "top": 85.047,
+        "width": 87.905,
+        "height": 4.276
+      }
+    },
+    {
+      "chave": "consomeAlcool",
+      "rotulo": "Você consome bebida alcoólica?",
+      "tipo": "select",
+      "campoPdf": "consomeAlcool",
+      "opcoes": [
+        "Sim",
+        "Não"
+      ],
+      "secao": "Alimentação",
+      "pagina": 3,
+      "pos": {
+        "left": 78.498,
+        "top": 90.392,
+        "width": 15.455,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "comentarios",
+      "rotulo": "Comentários ou informações extras que considere necessários:",
+      "tipo": "textoLongo",
+      "campoPdf": "comentarios",
+      "secao": "Outras informações",
+      "pagina": 4,
+      "pos": {
+        "left": 6.048,
+        "top": 15.679,
+        "width": 87.905,
+        "height": 4.276
+      }
+    },
+    {
+      "chave": "querCatalogoFisico",
+      "rotulo": "Gostaria de receber os nossos catálogos físicos?",
+      "tipo": "select",
+      "campoPdf": "querCatalogoFisico",
+      "opcoes": [
+        "Sim",
+        "Não"
+      ],
+      "secao": "Outras informações",
+      "pagina": 4,
+      "pos": {
+        "left": 78.498,
+        "top": 21.024,
+        "width": 15.455,
+        "height": 2.138
+      }
+    },
+    {
+      "chave": "enderecoPostalIgual",
+      "rotulo": "O endereço postal é o mesmo informado anteriormente?",
+      "tipo": "select",
+      "campoPdf": "enderecoPostalIgual",
+      "opcoes": [
+        "Sim",
+        "Não"
+      ],
+      "secao": "Outras informações",
+      "pagina": 4,
+      "pos": {
+        "left": 78.498,
+        "top": 24.231,
+        "width": 15.455,
+        "height": 2.138
+      }
+    }
+  ]
+}

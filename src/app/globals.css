@@ -6,7 +6,12 @@
   --color-laranja-escuro: #b8740f;
   --color-campo: #cfd6da;
   --color-texto: #171715;
+  --color-rotulo: #5c4e43;
   --color-fundo: #ffffff;
+  /* estados da ficha no painel da consultora (LegendaCores) */
+  --color-alterado: #ffe58f;
+  --color-alterado-borda: #e0a800;
+  --color-editando: #2563eb;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -14,4 +19,130 @@
 body {
   background: var(--color-fundo);
   color: var(--color-texto);
+}
+
+/* ─── Ficha (FichaDocumento / FichaLista) ─────────────────────────────────── */
+
+/* a fonte acompanha a largura da folha: 10 pt numa página de 595,28 pt (mínimo 11 px) */
+.ficha-pagina {
+  container-type: inline-size;
+}
+.ficha-caixa {
+  position: absolute;
+  box-sizing: border-box;
+}
+.ficha-campo {
+  box-sizing: border-box;
+  width: 100%;
+  background: var(--color-campo);
+  color: #171614;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  transition: background-color 0.2s, box-shadow 0.2s;
+}
+.ficha-campo:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-laranja);
+}
+.ficha-campo:disabled {
+  opacity: 1;
+  color: #171614;
+  cursor: default;
+}
+.ficha-campo-documento {
+  height: 100%;
+  padding: 0 0.4em;
+  font-size: max(11px, calc(10 / 595.28 * 100cqw));
+  line-height: 1.2;
+}
+textarea.ficha-campo-documento {
+  resize: none;
+  padding-top: 0.15em;
+  overflow-y: auto;
+}
+select.ficha-campo-documento {
+  padding-right: 0.2em;
+}
+.ficha-campo-lista {
+  min-height: 44px;
+  padding: 0.5em 0.75em;
+  font-size: 16px; /* ≥ 16 px: o iOS não dá zoom ao focar */
+  border-radius: 2px;
+}
+textarea.ficha-campo-lista {
+  min-height: 6em;
+  resize: vertical;
+}
+
+/* estados (modo consultora) */
+.ficha-alterado {
+  background: var(--color-alterado);
+  box-shadow: inset 0 0 0 1px var(--color-alterado-borda);
+}
+.ficha-editando {
+  outline: 2px solid var(--color-editando);
+  outline-offset: 1px;
+}
+.ficha-esmaecido {
+  opacity: 0.35;
+}
+.ficha-erro {
+  box-shadow: inset 0 0 0 2px #b91c1c;
+}
+.ficha-recente {
+  animation: ficha-pulso 2s ease-out;
+}
+@keyframes ficha-pulso {
+  0% { box-shadow: 0 0 0 0 rgba(224, 168, 0, 0.9); }
+  70% { box-shadow: 0 0 0 8px rgba(224, 168, 0, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(224, 168, 0, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ficha-recente { animation: none; }
+  .ficha-campo { transition: none; }
+}
+
+.ficha-etiqueta-editando {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 3px);
+  z-index: 2;
+  white-space: nowrap;
+  border-radius: 2px;
+  background: var(--color-editando);
+  color: #fff;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  pointer-events: none;
+}
+.ficha-icone-alterado,
+.ficha-icone-salvo {
+  position: absolute;
+  top: 50%;
+  right: 3px;
+  transform: translateY(-50%);
+  font-size: 11px;
+  pointer-events: none;
+}
+.ficha-icone-alterado { color: #8a6500; }
+.ficha-icone-salvo { color: #15803d; }
+.ficha-mensagem-erro {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 2px);
+  z-index: 3;
+  max-width: 260px;
+  border-radius: 2px;
+  background: #b91c1c;
+  color: #fff;
+  padding: 2px 6px;
+  font-size: 11px;
+  line-height: 1.3;
+}
+.ficha-campo-lista ~ .ficha-mensagem-erro {
+  position: static;
+  max-width: none;
+  margin-top: 2px;
+  font-size: 13px;
 }
