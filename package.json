@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "check": "npm run lint && npm run typecheck && npm test",
     "db:types": "supabase gen types typescript --linked --schema public > src/lib/supabase/database.types.ts",
-    "ficha:layout": "tsx scripts/gerar-layout-ficha.mts"
+    "ficha:layout": "tsx scripts/gerar-layout-ficha.mts",
+    "e2e": "node tests/e2e/cliente.mjs && node tests/e2e/painel-ao-vivo.mjs && node tests/e2e/pdf-e-exportacao.mjs"
   },
   "dependencies": {
     "@pdf-lib/fontkit": "^1.1.1",
