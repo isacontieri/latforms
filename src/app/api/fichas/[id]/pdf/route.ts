@@ -1,5 +1,5 @@
 import { registrarAuditoria } from '@/lib/audit';
-import { exigirFuncionario } from '@/lib/auth';
+import { exigirConsultora } from '@/lib/auth';
 import { gerarFicha, nomeArquivoFicha } from '@/lib/ficha/pdf/gerar';
 import { carregarRecursos } from '@/lib/ficha/pdf/recursos';
 import { DadosFichaSchema } from '@/lib/ficha/schema';
@@ -16,25 +16,25 @@ function respostaPdf(pdf: Uint8Array, nomeArquivo: string): Response {
   });
 }
 
-/** PDF da ficha para a equipe, gerado na hora (nada é salvo). */
+/** PDF da ficha para a equipe, gerado na hora a partir de `dados_atuais` (nada é salvo). */
 export async function GET(_req: Request, ctx: RouteContext<'/api/fichas/[id]/pdf'>) {
-  const funcionario = await exigirFuncionario();
-  if (funcionario instanceof Response) return funcionario;
+  const consultora = await exigirConsultora();
+  if (consultora instanceof Response) return consultora;
 
   const { id } = await ctx.params;
 
   const supabase = await criarClienteServidor();
   const { data: ficha } = await supabase
     .from('fichas')
-    .select('id, dados_snapshot, clientes(nome)')
+    .select('id, dados_atuais, clientes(nome)')
     .eq('id', id)
     .maybeSingle();
   if (!ficha) return falha('Ficha não encontrada', 404);
 
-  const ator = `funcionario:${funcionario.id}`;
+  const ator = `consultora:${consultora.id}`;
   const nome = ficha.clientes?.nome ?? null;
 
-  const dados = DadosFichaSchema.safeParse(ficha.dados_snapshot);
+  const dados = DadosFichaSchema.safeParse(ficha.dados_atuais);
   if (!dados.success) return falha('Esta ficha foi criada no modelo antigo. Gere uma nova versão para baixar o PDF.', 422);
 
   try {

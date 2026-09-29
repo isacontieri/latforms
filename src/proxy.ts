@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 /**
  * Só renova a sessão do Supabase e manda para /login quem não está logado em /admin.
- * NÃO é a checagem de autorização: páginas e rotas chamam `verificarFuncionario()`/`exigirFuncionario()`.
+ * NÃO é a checagem de autorização: páginas e rotas chamam `verificarConsultora()`/`exigirConsultora()`.
  * Não intercepta /f/*, /api/f/* nem /api/cron/* (autenticação própria) — ver `config.matcher`.
  */
 export async function proxy(request: NextRequest) {

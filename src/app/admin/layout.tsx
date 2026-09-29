@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Marca } from '@/components/Marca';
-import { verificarFuncionario } from '@/lib/auth';
+import { verificarConsultora } from '@/lib/auth';
 import { sair } from '../login/actions';
 
 function BotaoSair() {
@@ -16,10 +16,10 @@ function BotaoSair() {
 
 /**
  * Layout e página renderizam em paralelo: esta checagem só decide o que MOSTRAR.
- * Toda página ou rota que busca dados precisa chamar `verificarFuncionario()`/`exigirFuncionario()` de novo.
+ * Toda página ou rota que busca dados precisa chamar `verificarConsultora()`/`exigirConsultora()` de novo.
  */
 export default async function LayoutAdmin({ children }: LayoutProps<'/admin'>) {
-  const auth = await verificarFuncionario();
+  const auth = await verificarConsultora();
   if (!auth.ok && auth.status === 401) redirect('/login');
 
   if (!auth.ok) {
@@ -27,7 +27,7 @@ export default async function LayoutAdmin({ children }: LayoutProps<'/admin'>) {
       <main className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center gap-4 px-4 py-12">
         <Marca titulo="LatForms" />
         <h1 className="text-lg font-bold">Acesso negado</h1>
-        <p className="text-sm">Sua conta existe, mas não está cadastrada como funcionária do LatForms. Fale com a administração.</p>
+        <p className="text-sm">Sua conta existe, mas não está cadastrada como consultora do LatForms. Fale com a administração.</p>
         <BotaoSair />
       </main>
     );
@@ -46,7 +46,7 @@ export default async function LayoutAdmin({ children }: LayoutProps<'/admin'>) {
             </nav>
           </div>
           <div className="flex items-center gap-4 text-sm">
-            <span>{auth.funcionario.nome}</span>
+            <span>{auth.consultora.nome}</span>
             <BotaoSair />
           </div>
         </div>

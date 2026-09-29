@@ -2,42 +2,40 @@
 
 # LatForms
 
-Motor de fichas da Latitudes: transforma contatos exportados do RD Station (CSV) em **PDFs preenchíveis** da Ficha de Cadastro (gerados pelo sistema a partir de `lib/ficha/campos.ts`, 71 campos), entregues ao cliente por **link com token**. Só os funcionários fazem login. Plano completo em `PLANO_IMPLEMENTACAO.md`; regras de domínio (CSV, mapeamento, PDF, tokens) na skill `ficha-cadastro-latitudes`.
+Motor de fichas da Latitudes (v3): importa contatos do RD Station (CSV) e cria, para cada um, uma **ficha online com a cara do PDF "Ficha de Cadastro Latitudes"** (71 campos, `lib/ficha/campos.ts` + `lib/ficha/ficha-layout.json`), já pré-preenchida. O cliente abre o **link com token** e **preenche ali mesmo** (autosave por campo); a consultora **acompanha em tempo real** (Supabase Realtime): campo alterado em amarelo, campo em foco com contorno azul. Só as consultoras fazem login. Plano em `PLANO_IMPLEMENTACAO.md`; regras de domínio na skill `ficha-cadastro-latitudes` (a seção "Decisões desta implementação" no topo prevalece).
 
-Stack: Next.js 16 (App Router, `proxy.ts`) + TypeScript + Supabase (Auth, Postgres, Storage) + `pdf-lib` + `papaparse` + `zod` + Tailwind/shadcn. Testes: Vitest e Playwright. Nomes de domínio em português (`cliente`, `ficha`, `DadosFicha`), termos técnicos em inglês.
+Stack: Next.js 16 (App Router, `src/proxy.ts`) + TypeScript + Supabase (Auth, Postgres, **Realtime**) + `pdf-lib` + `papaparse` + `zod` + Tailwind. Testes: Vitest e Playwright. Domínio em português (`cliente`, `ficha`, `consultora`, `DadosFicha`), termos técnicos em inglês.
 
 Hospedagem: **Vercel Hobby + Supabase Free + GitHub Free. O projeto tem custo zero e precisa continuar assim.**
 
 ## Restrições de custo zero (obrigatórias)
 
-- **Não adicionar nenhum serviço, SDK ou dependência paga** (nem com free trial): nada de Upstash, Resend, Sentry pago, Vercel KV/Blob/Postgres, integrações com mensageiros etc. Só bibliotecas open source e os planos gratuitos acima. Se algo parecer exigir um serviço pago, parar e perguntar.
-- **Não guardar PDFs gerados** no Storage (limite de 1 GB). O PDF é gerado sob demanda a partir de `fichas.dados_snapshot` + fontes/logo de `assets/`.
-- **Não guardar o CSV importado.** O navegador lê o arquivo e envia lotes de até 200 linhas em JSON; o servidor processa e descarta.
-- **Nenhum arquivo passa pelo corpo de uma função Vercel** (limite de 4,5 MB). O PDF do cliente vai direto para o Supabase Storage por URL assinada.
-- **Rate limit** com a função Postgres `consumir_rate_limit`, não com serviço externo.
-- **Cron:** a Vercel Hobby só roda cron 1x por dia. Tudo que é periódico fica em `/api/cron/manutencao`.
-- **Sem Docker.** O dev usa o projeto Supabase Free `latforms-dev`; migrations com `supabase link` + `supabase db push`.
-- No máximo 2 projetos Supabase (`latforms-dev`, `latforms-prod`).
-- Funções em `gru1` (`vercel.json`), Supabase em `sa-east-1`.
-- Hospedagem só na Vercel, sem recursos pagos (KV, Blob, Postgres, Edge Config pago, Password Protection).
-- Chaves do Supabase: usar as novas **publishable** e **secret** (`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`), não as legadas `anon`/`service_role`.
+- **Nenhum serviço, SDK ou dependência paga** (nem trial): nada de Upstash, Resend, Pusher, Ably, Liveblocks, Sentry pago, Vercel KV/Blob/Postgres, Password Protection. Tempo real é **só Supabase Realtime**. Se algo parecer exigir serviço pago, parar e perguntar.
+- **Supabase Storage não é usado** (não há upload). PDF final é gerado sob demanda de `fichas.dados_atuais` + fontes/logo de `assets/`.
+- **CSV importado não é guardado.** O navegador lê o arquivo e envia lotes de até 200 linhas em JSON.
+- Realtime Free (200 conexões, 2 M mensagens/mês): **só consultoras conectam**; broadcast só após gravação real; presença só na troca de campo + heartbeat de 30 s.
+- **Rate limit** com a função Postgres `consumir_rate_limit`. **Cron** 1x/dia em `/api/cron/manutencao`.
+- **Sem Docker.** Dev no projeto Supabase Free `latforms-dev` (`supabase db push`). Nunca aplicar em `latforms-prod` sem pedido explícito. No máximo 2 projetos.
+- Funções em `gru1` (`vercel.json`), Supabase em `sa-east-1`. Chaves novas: `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` e `SUPABASE_SECRET_KEY`.
 
 ## Regras invioláveis
 
-1. **Nunca achatar o PDF** (`form.flatten()` é proibido). O cliente precisa editar os campos.
-2. **Nunca salvar o token puro.** Salvar só `sha256(token)`; o token aparece uma única vez na resposta de criação.
-3. **Nunca expor `SUPABASE_SECRET_KEY` no client.** Só em route handlers / server actions (`lib/supabase/admin.ts` com `import 'server-only'`).
-4. **Autorização não depende só do `proxy.ts`.** Todo layout de `/admin` e todo route handler de funcionário chamam `exigirFuncionario()` (`lib/auth.ts`). O `proxy.ts` não intercepta `/f/*`, `/api/f/*` nem `/api/cron/*`.
-5. **Nunca logar** conteúdo do CSV, de `dados_rd`, `dados_ficha` ou do PDF (dados de saúde = dado sensível LGPD). Logar apenas IDs.
-6. **Não inferir dados de saúde** que o cliente não informou. Campo sem fonte clara fica em branco.
-7. Token inválido, expirado, revogado ou de ficha cancelada → sempre **404 genérico**.
-8. Todas as rotas `/f/*` e `/api/f/*`: `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex`, rate limit por IP.
-9. Funções SQL `security definer` sempre com `set search_path = public` e, se forem só do servidor, `revoke execute ... from public, anon, authenticated`.
-10. Toda ação relevante grava em `auditoria` (`lib/audit.ts`).
+1. **Nunca salvar o token puro.** Só `sha256(token)`; o token aparece uma única vez.
+2. **`SUPABASE_SECRET_KEY` só no servidor** (`lib/supabase/admin.ts`, `import 'server-only'`).
+3. **O cliente nunca se conecta ao Supabase** (nem publishable key, nem Realtime). Tudo do cliente passa por `/api/f/[token]/*`.
+4. **Realtime só em canal privado** (`ficha:<id>`, `fichas:lista`) com política em `realtime.messages` restrita a consultoras. Nunca canal público nem Postgres Changes.
+5. **O banco é a fonte da verdade:** Realtime só avisa; ao montar, reconectar ou voltar à aba, o painel recarrega do banco.
+6. Escrita de campo **sempre** via RPC `atualizar_campo` (atômica + histórico); `PATCH /campos` aceita só chaves do `ficha-layout.json`, valor validado com zod.
+7. **Autorização não depende só do `proxy.ts`:** toda página/rota de consultora chama `verificarConsultora()`/`exigirConsultora()`. O proxy não intercepta `/f/*`, `/api/f/*`, `/api/cron/*`.
+8. **Nunca logar valores de campos** nem conteúdo do CSV/`dados_rd` (dados de saúde = sensível LGPD). Só IDs e nomes de campo.
+9. **Não inferir dados de saúde** que o cliente não informou.
+10. Token inválido, expirado, revogado ou de ficha cancelada → **404 genérico**.
+11. `/f/*` e `/api/f/*`: `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex`, rate limit.
+12. Funções SQL `security definer` com `set search_path = public`; as só do servidor com `revoke execute … from public, anon, authenticated`.
+13. PDF final nunca achatado (`form.flatten()` proibido). Toda ação relevante grava em `auditoria` (`lib/audit.ts`).
 
 ## Convenções
 
-- Server actions/route handlers retornam `{ ok: true, data } | { ok: false, erro }`.
-- Mensagens para o usuário em português; logs e erros técnicos podem ser em inglês.
-- Commits no padrão Conventional Commits (`feat:`, `fix:`, `test:`...).
-- Antes de concluir qualquer tarefa: `npm run check` (lint + typecheck + testes).
+- Route handlers retornam `{ ok: true, data } | { ok: false, erro }`.
+- Mensagens ao usuário em português, tom acolhedor (o cliente é viajante, não técnico); logs técnicos podem ser em inglês.
+- Conventional Commits. Antes de concluir qualquer tarefa: `npm run check` (lint + typecheck + testes).

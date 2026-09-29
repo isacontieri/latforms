@@ -1,5 +1,5 @@
 /**
- * Regra de senha dos funcionários — a mesma configurada no Supabase Auth (`supabase/config.toml`):
+ * Regra de senha das consultoras — a mesma configurada no Supabase Auth (`supabase/config.toml`):
  * mínimo 8 caracteres, com letra maiúscula, minúscula, número e caractere especial.
  * Usada no navegador (feedback) e no servidor (a criação pela API de admin não aplica a regra sozinha).
  */

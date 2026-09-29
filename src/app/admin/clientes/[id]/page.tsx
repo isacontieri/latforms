@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { verificarFuncionario } from '@/lib/auth';
+import { verificarConsultora } from '@/lib/auth';
 import { mapearParaFicha } from '@/lib/ficha/mapping';
 import { DadosFichaSchema, type DadosFicha } from '@/lib/ficha/schema';
 import { ROTULO_STATUS, aceitaDadosDoRd, proximoStatus } from '@/lib/ficha/status';
@@ -43,7 +43,7 @@ function formatarValor(v: ValorCampo): string {
 const rotuloColuna = (c: ColunaRd) => c.coluna.replace(/:$/, '');
 
 export default async function PaginaCliente({ params }: PageProps<'/admin/clientes/[id]'>) {
-  const auth = await verificarFuncionario();
+  const auth = await verificarConsultora();
   if (!auth.ok) redirect('/login');
 
   const { id } = await params;
@@ -51,7 +51,7 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
   const { data: cliente } = await supabase
     .from('clientes')
     .select(
-      'id, nome, email, rd_id, dados_rd, criado_em, atualizado_em, fichas(id, versao, status, criado_em, snapshot_atualizado_em, dados_snapshot, dados_respondidos, respondida_em, tokens_acesso(expira_em, revogado_em, usos, ultimo_acesso_em))',
+      'id, nome, email, rd_id, dados_rd, criado_em, atualizado_em, fichas(id, status, criado_em, atualizado_em, concluida_em, dados_originais, dados_atuais, tokens_acesso(expira_em, revogado_em, usos, ultimo_acesso_em))',
     )
     .eq('id', id)
     .order('criado_em', { referencedTable: 'fichas', ascending: false })
@@ -63,9 +63,11 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
   const versaoRd: DadosFicha | null = dadosRd?.campos ? mapearParaFicha(dadosRd.campos) : null;
   const ficha = cliente.fichas.find((f) => f.status !== 'cancelada') ?? null; // no máximo uma (índice único)
   const canceladas = cliente.fichas.filter((f) => f.status === 'cancelada');
-  const devolvida = ficha !== null && !aceitaDadosDoRd(ficha.status);
-  const versaoCliente = ficha?.dados_respondidos ? DadosFichaSchema.safeParse(ficha.dados_respondidos) : null;
-  const pendenteAtualizar = ficha && !devolvida && versaoRd && !jsonIgual(ficha.dados_snapshot, versaoRd);
+  // o cliente já editou algum campo: a ficha não acompanha mais o RD
+  const clienteEditou = ficha !== null && !aceitaDadosDoRd(ficha.status);
+  const dadosAtuais = ficha ? DadosFichaSchema.safeParse(ficha.dados_atuais) : null;
+  const pendenteAtualizar = ficha && !clienteEditou && versaoRd && !jsonIgual(ficha.dados_originais, versaoRd);
+  const rdMudouDepois = ficha && clienteEditou && versaoRd && !jsonIgual(ficha.dados_originais, versaoRd);
   const extras = Object.entries(dadosRd?.extras ?? {});
   const agora = new Date();
   const token = ficha?.tokens_acesso.find((t) => !t.revogado_em && new Date(t.expira_em) > agora) ?? null;
@@ -88,7 +90,7 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-bold text-laranja">Ficha</h2>
           {!ficha && <BotaoGerarFicha clienteId={cliente.id} rotulo="Gerar ficha" />}
-          {ficha && !devolvida && <BotaoGerarFicha clienteId={cliente.id} rotulo="Atualizar ficha com o RD" />}
+          {ficha && !clienteEditou && <BotaoGerarFicha clienteId={cliente.id} rotulo="Atualizar ficha com o RD" />}
         </div>
 
         {!ficha ? (
@@ -98,37 +100,36 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
             <div className="flex flex-wrap gap-x-8 gap-y-1">
               <span><span className="font-bold">Situação:</span> {ROTULO_STATUS[ficha.status]}</span>
               <span><span className="font-bold">Criada em:</span> {formatarData.format(new Date(ficha.criado_em))}</span>
-              {ficha.snapshot_atualizado_em && (
-                <span>
-                  <span className="font-bold">Atualizada com o RD em:</span> {formatarData.format(new Date(ficha.snapshot_atualizado_em))}
-                </span>
-              )}
+              <span><span className="font-bold">Última alteração:</span> {formatarData.format(new Date(ficha.atualizado_em))}</span>
             </div>
             <div className="flex flex-wrap gap-x-6 gap-y-1">
-              <a href={`/api/fichas/${ficha.id}/pdf?tipo=gerado`} className="font-bold text-laranja underline underline-offset-4">
-                Baixar PDF {devolvida ? '(como foi enviado ao cliente)' : ''}
+              <Link href={`/admin/fichas/${ficha.id}`} className="font-bold text-laranja underline underline-offset-4">
+                Acompanhar ficha ao vivo
+              </Link>
+              <a href={`/api/fichas/${ficha.id}/pdf`} className="font-bold text-laranja underline underline-offset-4">
+                Baixar PDF
               </a>
             </div>
-            {ficha.respondida_em && (
+            {ficha.concluida_em && (
               <p>
-                <span className="font-bold">Devolvida pelo cliente em:</span> {formatarData.format(new Date(ficha.respondida_em))}
+                <span className="font-bold">Concluída pelo cliente em:</span> {formatarData.format(new Date(ficha.concluida_em))}
               </p>
             )}
             <LinkDoCliente
               fichaId={ficha.id}
               nomeCliente={cliente.nome}
               emailCliente={cliente.email}
-              remetente={auth.funcionario.nome}
+              remetente={auth.consultora.nome}
               ativo={linkAtivo}
               podeGerar={proximoStatus(ficha.status, 'gerar_link') !== null}
             />
             {pendenteAtualizar && (
               <p className="text-laranja-escuro">Os dados do RD mudaram desde a última atualização da ficha. Clique em “Atualizar ficha com o RD”.</p>
             )}
-            {devolvida && (
+            {clienteEditou && (
               <p className="text-texto/70">
-                O cliente já devolveu a ficha: vale a versão dele. Novas importações do RD não alteram a ficha; os dados novos
-                aparecem abaixo para comparação.
+                O cliente já começou a preencher: vale o que ele informou. Novas importações do RD não alteram a ficha
+                {rdMudouDepois ? '; o RD mudou depois disso e os dados novos aparecem abaixo para comparação.' : '.'}
               </p>
             )}
           </div>
@@ -140,24 +141,22 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
 
       {!versaoRd ? (
         <p className="text-sm text-red-700">Os dados do RD deste cliente estão incompletos. Reimporte o CSV.</p>
-      ) : devolvida ? (
+      ) : clienteEditou && dadosAtuais?.success ? (
         <>
           <section className="flex flex-col gap-3">
-            <h2 className="text-lg font-bold text-laranja">Versão do cliente (ficha devolvida)</h2>
-            {versaoCliente?.success ? (
-              <DadosDaFicha dados={versaoCliente.data} />
-            ) : (
-              <p className="text-sm">Os dados lidos do PDF devolvido aparecem aqui.</p>
-            )}
-          </section>
-          <section className="flex flex-col gap-3">
-            <h2 className="text-lg font-bold text-laranja">Versão atual do RD Station</h2>
+            <h2 className="text-lg font-bold text-laranja">Ficha agora</h2>
             <DadosDaFicha
-              dados={versaoRd}
-              compararCom={versaoCliente?.success ? versaoCliente.data : null}
-              rotuloComparacao="da versão do cliente (destacados em laranja)."
+              dados={dadosAtuais.data}
+              compararCom={DadosFichaSchema.safeParse(ficha.dados_originais).data ?? null}
+              rotuloComparacao="alterado(s) pelo cliente em relação ao que veio do RD (destacados em laranja)."
             />
           </section>
+          {rdMudouDepois && (
+            <section className="flex flex-col gap-3">
+              <h2 className="text-lg font-bold text-laranja">RD Station atual (só para comparação)</h2>
+              <DadosDaFicha dados={versaoRd} compararCom={dadosAtuais.data} rotuloComparacao="da ficha atual (destacados em laranja)." />
+            </section>
+          )}
         </>
       ) : (
         <section className="flex flex-col gap-3">

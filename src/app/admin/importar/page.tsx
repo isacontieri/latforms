@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { verificarFuncionario } from '@/lib/auth';
+import { verificarConsultora } from '@/lib/auth';
 import { ImportarCsv } from './ImportarCsv';
 
 export const metadata: Metadata = { title: 'Importar CSV — LatForms' };
 
 export default async function PaginaImportar() {
-  const auth = await verificarFuncionario();
+  const auth = await verificarConsultora();
   if (!auth.ok) redirect('/login');
 
   return (

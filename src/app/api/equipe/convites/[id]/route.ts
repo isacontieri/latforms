@@ -1,12 +1,12 @@
 import { registrarAuditoria } from '@/lib/audit';
-import { exigirFuncionario } from '@/lib/auth';
+import { exigirConsultora } from '@/lib/auth';
 import { falha, ok } from '@/lib/http';
 import { criarClienteAdmin } from '@/lib/supabase/admin';
 
 /** Revoga um link de convite ou de nova senha ainda não usado. */
 export async function DELETE(_req: Request, ctx: RouteContext<'/api/equipe/convites/[id]'>) {
-  const funcionario = await exigirFuncionario();
-  if (funcionario instanceof Response) return funcionario;
+  const consultora = await exigirConsultora();
+  if (consultora instanceof Response) return consultora;
   const { id } = await ctx.params;
 
   const { data } = await criarClienteAdmin()
@@ -18,6 +18,6 @@ export async function DELETE(_req: Request, ctx: RouteContext<'/api/equipe/convi
     .select('id');
   if (!data?.length) return falha('Convite não encontrado ou já usado', 404);
 
-  await registrarAuditoria({ ator: `funcionario:${funcionario.id}`, acao: `convite_equipe_revogado:${id}` });
+  await registrarAuditoria({ ator: `consultora:${consultora.id}`, acao: `convite_equipe_revogado:${id}` });
   return ok({ id });
 }

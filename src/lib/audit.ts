@@ -3,7 +3,7 @@ import { headers } from 'next/headers';
 import { criarClienteAdmin } from '@/lib/supabase/admin';
 
 export interface EventoAuditoria {
-  /** 'funcionario:<uuid>', 'cliente:<ficha_id>' ou 'cron' */
+  /** 'consultora:<uuid>', 'cliente:<ficha_id>' ou 'cron' */
   ator: string;
   acao: string;
   fichaId?: string | null;

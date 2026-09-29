@@ -1,5 +1,5 @@
 import { registrarAuditoria } from '@/lib/audit';
-import { exigirFuncionario } from '@/lib/auth';
+import { exigirConsultora } from '@/lib/auth';
 import { proximoStatus } from '@/lib/ficha/status';
 import { falha, ok } from '@/lib/http';
 import { criarClienteAdmin } from '@/lib/supabase/admin';
@@ -13,8 +13,8 @@ function validadeDias(): number {
 
 /** Gera o link do cliente (revoga o anterior). O token puro só aparece nesta resposta. */
 export async function POST(_req: Request, ctx: RouteContext<'/api/fichas/[id]/link'>) {
-  const funcionario = await exigirFuncionario();
-  if (funcionario instanceof Response) return funcionario;
+  const consultora = await exigirConsultora();
+  if (consultora instanceof Response) return consultora;
   const { id } = await ctx.params;
 
   const supabase = await criarClienteServidor();
@@ -35,14 +35,14 @@ export async function POST(_req: Request, ctx: RouteContext<'/api/fichas/[id]/li
     return falha('Não foi possível gerar o link', 500);
   }
 
-  await registrarAuditoria({ ator: `funcionario:${funcionario.id}`, acao: 'link_cliente_gerado', fichaId: id });
+  await registrarAuditoria({ ator: `consultora:${consultora.id}`, acao: 'link_cliente_gerado', fichaId: id });
   return ok({ url: urlDoApp(`/f/${token}`), expiraEm }, { status: 201 });
 }
 
 /** Revoga o link ativo da ficha. */
 export async function DELETE(_req: Request, ctx: RouteContext<'/api/fichas/[id]/link'>) {
-  const funcionario = await exigirFuncionario();
-  if (funcionario instanceof Response) return funcionario;
+  const consultora = await exigirConsultora();
+  if (consultora instanceof Response) return consultora;
   const { id } = await ctx.params;
 
   const supabase = await criarClienteServidor();
@@ -54,6 +54,6 @@ export async function DELETE(_req: Request, ctx: RouteContext<'/api/fichas/[id]/
     .select('id');
   if (!data?.length) return falha('Não há link ativo para esta ficha', 404);
 
-  await registrarAuditoria({ ator: `funcionario:${funcionario.id}`, acao: 'link_cliente_revogado', fichaId: id });
+  await registrarAuditoria({ ator: `consultora:${consultora.id}`, acao: 'link_cliente_revogado', fichaId: id });
   return ok({ revogados: data.length });
 }

@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import type { Database } from './database.types';
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from './env';
 
-/** Cliente com a sessão do funcionário (respeita RLS). Criar um por requisição. */
+/** Cliente com a sessão da consultora (respeita RLS). Criar um por requisição. */
 export async function criarClienteServidor() {
   const cookieStore = await cookies();
   return createServerClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {

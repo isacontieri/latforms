@@ -6,7 +6,7 @@ export interface DadosMensagem {
   expiraEm: string;
   /** Nome de quem recebe (se conhecido). */
   nomeDestinatario?: string | null;
-  /** Nome de quem está enviando (funcionário logado). */
+  /** Nome de quem está enviando (consultora logada). */
   remetente: string;
 }
 

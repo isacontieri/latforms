@@ -7,29 +7,26 @@ import type { StatusFicha } from './status';
 
 type Supabase = Awaited<ReturnType<typeof criarClienteServidor>>;
 
-/** Status em que a ficha ainda acompanha o RD (mesma regra de `aceitaDadosDoRd`). */
-const NAO_DEVOLVIDA: StatusFicha[] = ['gerada', 'enviada', 'aberta'];
+/** Mesma regra de `aceitaDadosDoRd`: o cliente ainda não editou nenhum campo. */
+const SEM_EDICAO_DO_CLIENTE: StatusFicha[] = ['gerada', 'enviada', 'aberta'];
 
 /**
- * Troca os dados pré-preenchidos de uma ficha ainda não devolvida. O link do cliente continua o mesmo
- * e passa a baixar o PDF atualizado. Se o cliente devolveu nesse meio-tempo, não altera nada.
+ * Leva os dados novos do RD para a ficha (originais e atuais), só se o cliente ainda não editou nada.
+ * Se ele editou nesse meio-tempo, não altera (a condição de status está no próprio UPDATE).
  */
-export async function atualizarDadosDaFicha(
+export async function atualizarFichaPeloRd(
   supabase: Supabase,
-  ficha: { fichaId: string; versao: number; snapshot: DadosFicha },
+  ficha: { fichaId: string; dados: DadosFicha },
   ator: string,
 ): Promise<boolean> {
+  const dados = ficha.dados as unknown as Json;
   const { data, error } = await supabase
     .from('fichas')
-    .update({
-      dados_snapshot: ficha.snapshot as unknown as Json,
-      versao: ficha.versao + 1,
-      snapshot_atualizado_em: new Date().toISOString(),
-    })
+    .update({ dados_originais: dados, dados_atuais: dados })
     .eq('id', ficha.fichaId)
-    .in('status', NAO_DEVOLVIDA)
+    .in('status', SEM_EDICAO_DO_CLIENTE)
     .select('id');
-  if (error) throw new Error(`atualizar ficha: ${error.code}`);
+  if (error) throw new Error(`atualizar ficha pelo RD: ${error.code}`);
   const atualizou = (data ?? []).length > 0;
   if (atualizou) await registrarAuditoria({ ator, acao: 'ficha_atualizada_pelo_rd', fichaId: ficha.fichaId });
   return atualizou;

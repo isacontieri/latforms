@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { mensagemSenha, problemasDaSenha } from '@/lib/equipe/senha';
 import { avisosDeDuplicidade, type DocContato } from '@/lib/importacao/lote';
 
-describe('regra de senha dos funcionários', () => {
+describe('regra de senha das consultoras', () => {
   it('aceita senha com 8+, maiúscula, minúscula, número e especial', () => {
     expect(problemasDaSenha('Latitudes#2026')).toEqual([]);
     expect(mensagemSenha([])).toBeNull();

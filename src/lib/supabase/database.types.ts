@@ -88,6 +88,27 @@ export type Database = {
           },
         ]
       }
+      consultoras: {
+        Row: {
+          criado_em: string
+          email: string | null
+          id: string
+          nome: string
+        }
+        Insert: {
+          criado_em?: string
+          email?: string | null
+          id: string
+          nome: string
+        }
+        Update: {
+          criado_em?: string
+          email?: string | null
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
       convites_equipe: {
         Row: {
           criado_em: string
@@ -133,7 +154,45 @@ export type Database = {
             foreignKeyName: "convites_equipe_criado_por_fkey"
             columns: ["criado_por"]
             isOneToOne: false
-            referencedRelation: "funcionarios"
+            referencedRelation: "consultoras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ficha_edicoes: {
+        Row: {
+          campo: string
+          criado_em: string
+          ficha_id: string
+          id: number
+          origem: string
+          valor_anterior: Json | null
+          valor_novo: Json | null
+        }
+        Insert: {
+          campo: string
+          criado_em?: string
+          ficha_id: string
+          id?: number
+          origem?: string
+          valor_anterior?: Json | null
+          valor_novo?: Json | null
+        }
+        Update: {
+          campo?: string
+          criado_em?: string
+          ficha_id?: string
+          id?: number
+          origem?: string
+          valor_anterior?: Json | null
+          valor_novo?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ficha_edicoes_ficha_id_fkey"
+            columns: ["ficha_id"]
+            isOneToOne: false
+            referencedRelation: "fichas"
             referencedColumns: ["id"]
           },
         ]
@@ -141,48 +200,45 @@ export type Database = {
       fichas: {
         Row: {
           aprovada_em: string | null
+          atualizado_em: string
+          campo_em_foco: string | null
           cliente_id: string
+          cliente_visto_em: string | null
+          concluida_em: string | null
           criado_em: string
           criado_por: string | null
-          dados_respondidos: Json | null
-          dados_snapshot: Json
+          dados_atuais: Json
+          dados_originais: Json
           id: string
-          motivo_correcao: string | null
-          pdf_respondido_path: string | null
-          respondida_em: string | null
-          snapshot_atualizado_em: string | null
           status: Database["public"]["Enums"]["status_ficha"]
-          versao: number
         }
         Insert: {
           aprovada_em?: string | null
+          atualizado_em?: string
+          campo_em_foco?: string | null
           cliente_id: string
+          cliente_visto_em?: string | null
+          concluida_em?: string | null
           criado_em?: string
           criado_por?: string | null
-          dados_respondidos?: Json | null
-          dados_snapshot: Json
+          dados_atuais: Json
+          dados_originais: Json
           id?: string
-          motivo_correcao?: string | null
-          pdf_respondido_path?: string | null
-          respondida_em?: string | null
-          snapshot_atualizado_em?: string | null
           status?: Database["public"]["Enums"]["status_ficha"]
-          versao?: number
         }
         Update: {
           aprovada_em?: string | null
+          atualizado_em?: string
+          campo_em_foco?: string | null
           cliente_id?: string
+          cliente_visto_em?: string | null
+          concluida_em?: string | null
           criado_em?: string
           criado_por?: string | null
-          dados_respondidos?: Json | null
-          dados_snapshot?: Json
+          dados_atuais?: Json
+          dados_originais?: Json
           id?: string
-          motivo_correcao?: string | null
-          pdf_respondido_path?: string | null
-          respondida_em?: string | null
-          snapshot_atualizado_em?: string | null
           status?: Database["public"]["Enums"]["status_ficha"]
-          versao?: number
         }
         Relationships: [
           {
@@ -196,31 +252,10 @@ export type Database = {
             foreignKeyName: "fichas_criado_por_fkey"
             columns: ["criado_por"]
             isOneToOne: false
-            referencedRelation: "funcionarios"
+            referencedRelation: "consultoras"
             referencedColumns: ["id"]
           },
         ]
-      }
-      funcionarios: {
-        Row: {
-          criado_em: string
-          email: string | null
-          id: string
-          nome: string
-        }
-        Insert: {
-          criado_em?: string
-          email?: string | null
-          id: string
-          nome: string
-        }
-        Update: {
-          criado_em?: string
-          email?: string | null
-          id?: string
-          nome?: string
-        }
-        Relationships: []
       }
       importacoes: {
         Row: {
@@ -258,7 +293,7 @@ export type Database = {
             foreignKeyName: "importacoes_importado_por_fkey"
             columns: ["importado_por"]
             isOneToOne: false
-            referencedRelation: "funcionarios"
+            referencedRelation: "consultoras"
             referencedColumns: ["id"]
           },
         ]
@@ -327,6 +362,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      atualizar_campo: {
+        Args: {
+          p_campo: string
+          p_ficha: string
+          p_origem: string
+          p_valor: Json
+        }
+        Returns: Json
+      }
       consumir_rate_limit: {
         Args: { p_chave: string; p_janela_seg: number; p_limite: number }
         Returns: boolean
@@ -335,15 +379,15 @@ export type Database = {
         Args: { p_expira_em: string; p_ficha_id: string; p_token_hash: string }
         Returns: string
       }
-      is_funcionario: { Args: never; Returns: boolean }
+      is_consultora: { Args: never; Returns: boolean }
     }
     Enums: {
       status_ficha:
         | "gerada"
         | "enviada"
         | "aberta"
-        | "respondida"
-        | "correcao_solicitada"
+        | "em_preenchimento"
+        | "concluida"
         | "aprovada"
         | "cancelada"
       tipo_convite: "convite" | "nova_senha"
@@ -478,8 +522,8 @@ export const Constants = {
         "gerada",
         "enviada",
         "aberta",
-        "respondida",
-        "correcao_solicitada",
+        "em_preenchimento",
+        "concluida",
         "aprovada",
         "cancelada",
       ],

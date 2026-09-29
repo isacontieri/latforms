@@ -6,8 +6,9 @@ import { criarClienteAdmin } from '@/lib/supabase/admin';
 import { hashToken, tokenValido } from '@/lib/tokens';
 import type { StatusFicha } from './status';
 
-/** Limite das rotas do cliente: 20 requisições por minuto por IP (skill §9). */
-export const LIMITE_CLIENTE = { limite: 20, janelaSeg: 60 };
+/** Limites das rotas do cliente (plano v3 §9): 30 req/min por IP e 60 escritas/min por token. */
+export const LIMITE_IP = { limite: 30, janelaSeg: 60 };
+export const LIMITE_ESCRITA_TOKEN = { limite: 60, janelaSeg: 60 };
 
 export interface AcessoCliente {
   tokenId: string;
@@ -15,39 +16,43 @@ export interface AcessoCliente {
   ficha: {
     id: string;
     status: StatusFicha;
-    dadosSnapshot: unknown;
-    pdfRespondidoPath: string | null;
-    respondidaEm: string | null;
-    motivoCorrecao: string | null;
+    dadosAtuais: unknown;
+    dadosOriginais: unknown;
+    concluidaEm: string | null;
   };
   cliente: { nome: string; email: string | null };
 }
 
 /** Rate limit por IP para /f/* e /api/f/*. */
-export async function dentroDoLimiteCliente(): Promise<boolean> {
+export async function dentroDoLimiteIp(): Promise<boolean> {
   const ip = ipDaRequisicao(await headers()) ?? 'desconhecido';
-  return consumirRateLimit(`f:${ip}`, LIMITE_CLIENTE.limite, LIMITE_CLIENTE.janelaSeg);
+  return consumirRateLimit(`f:${ip}`, LIMITE_IP.limite, LIMITE_IP.janelaSeg);
+}
+
+/** Rate limit de escrita por token (autosave). */
+export function dentroDoLimiteEscrita(tokenId: string): Promise<boolean> {
+  return consumirRateLimit(`fw:${tokenId}`, LIMITE_ESCRITA_TOKEN.limite, LIMITE_ESCRITA_TOKEN.janelaSeg);
 }
 
 /**
  * Token do link do cliente → ficha. `null` para inexistente, revogado, expirado ou ficha cancelada
- * (quem chama responde sempre 404 genérico). Registra o uso (contador e último acesso), sem mudar o status.
+ * (quem chama responde sempre 404 genérico). Com `registrarUso`, conta o acesso (sem mudar o status).
  */
-export async function validarTokenCliente(token: string): Promise<AcessoCliente | null> {
+export async function validarTokenCliente(token: string, opcoes: { registrarUso?: boolean } = {}): Promise<AcessoCliente | null> {
   if (!tokenValido(token)) return null;
   const admin = criarClienteAdmin();
   const { data } = await admin
     .from('tokens_acesso')
-    .select(
-      'id, expira_em, revogado_em, usos, fichas(id, status, dados_snapshot, pdf_respondido_path, respondida_em, motivo_correcao, clientes(nome, email))',
-    )
+    .select('id, expira_em, revogado_em, usos, fichas(id, status, dados_atuais, dados_originais, concluida_em, clientes(nome, email))')
     .eq('token_hash', hashToken(token))
     .maybeSingle();
 
   const ficha = data?.fichas;
   if (!data || !ficha || data.revogado_em || new Date(data.expira_em) <= new Date() || ficha.status === 'cancelada') return null;
 
-  await admin.from('tokens_acesso').update({ usos: data.usos + 1, ultimo_acesso_em: new Date().toISOString() }).eq('id', data.id);
+  if (opcoes.registrarUso) {
+    await admin.from('tokens_acesso').update({ usos: data.usos + 1, ultimo_acesso_em: new Date().toISOString() }).eq('id', data.id);
+  }
 
   return {
     tokenId: data.id,
@@ -55,10 +60,9 @@ export async function validarTokenCliente(token: string): Promise<AcessoCliente 
     ficha: {
       id: ficha.id,
       status: ficha.status,
-      dadosSnapshot: ficha.dados_snapshot,
-      pdfRespondidoPath: ficha.pdf_respondido_path,
-      respondidaEm: ficha.respondida_em,
-      motivoCorrecao: ficha.motivo_correcao,
+      dadosAtuais: ficha.dados_atuais,
+      dadosOriginais: ficha.dados_originais,
+      concluidaEm: ficha.concluida_em,
     },
     cliente: { nome: ficha.clientes?.nome ?? '', email: ficha.clientes?.email ?? null },
   };
@@ -67,6 +71,14 @@ export async function validarTokenCliente(token: string): Promise<AcessoCliente 
 /** Respostas das rotas /api/f/*: nunca em cache. */
 export const SEM_CACHE = { 'Cache-Control': 'no-store' };
 
+export function respostaCliente(corpo: object, status = 200): Response {
+  return Response.json(corpo, { status, headers: SEM_CACHE });
+}
+
 export function naoEncontrado(): Response {
-  return Response.json({ ok: false, erro: 'Link inválido ou expirado' }, { status: 404, headers: SEM_CACHE });
+  return respostaCliente({ ok: false, erro: 'Link inválido ou expirado' }, 404);
+}
+
+export function muitasTentativas(): Response {
+  return respostaCliente({ ok: false, erro: 'Muitas tentativas em pouco tempo. Aguarde um minuto.' }, 429);
 }

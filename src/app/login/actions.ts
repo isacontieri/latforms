@@ -23,7 +23,7 @@ export async function entrar(_anterior: EstadoLogin, form: FormData): Promise<Es
     return { erro: `Não foi possível entrar agora (código: ${error.code ?? error.status}). Avise o responsável pelo sistema.` };
   }
 
-  await registrarAuditoria({ ator: `funcionario:${data.user.id}`, acao: 'login' });
+  await registrarAuditoria({ ator: `consultora:${data.user.id}`, acao: 'login' });
   redirect('/admin');
 }
 
@@ -31,6 +31,6 @@ export async function sair(): Promise<void> {
   const supabase = await criarClienteServidor();
   const { data: { user } } = await supabase.auth.getUser();
   await supabase.auth.signOut();
-  if (user) await registrarAuditoria({ ator: `funcionario:${user.id}`, acao: 'logout' });
+  if (user) await registrarAuditoria({ ator: `consultora:${user.id}`, acao: 'logout' });
   redirect('/login');
 }

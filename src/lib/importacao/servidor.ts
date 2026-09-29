@@ -11,7 +11,7 @@ export async function buscarExistentes(supabase: Supabase, rdIds: string[]): Pro
 
   const { data, error } = await supabase
     .from('clientes')
-    .select('id, rd_id, fichas(id, status, versao, dados_snapshot)')
+    .select('id, rd_id, fichas(id, status, dados_originais)')
     .in('rd_id', rdIds)
     .neq('fichas.status', 'cancelada');
   if (error) throw new Error(`buscar clientes existentes: ${error.code}`);
@@ -20,7 +20,7 @@ export async function buscarExistentes(supabase: Supabase, rdIds: string[]): Pro
     const f = c.fichas[0]; // índice único: no máximo uma ficha ativa por cliente
     mapa.set(c.rd_id, {
       id: c.id,
-      ficha: f ? { id: f.id, status: f.status, versao: f.versao, snapshot: f.dados_snapshot } : null,
+      ficha: f ? { id: f.id, status: f.status, originais: f.dados_originais } : null,
     });
   }
   return mapa;

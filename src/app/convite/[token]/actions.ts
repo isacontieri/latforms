@@ -14,7 +14,7 @@ export interface EstadoConvite {
 
 const LINK_INVALIDO = 'Este link não é mais válido. Peça um novo link a alguém da equipe.';
 
-/** Aceita o convite (cria a conta e o cadastro de funcionário) ou define a senha nova. */
+/** Aceita o convite (cria a conta e o cadastro de consultora) ou define a senha nova. */
 export async function aceitarConvite(token: string, _anterior: EstadoConvite, form: FormData): Promise<EstadoConvite> {
   const ip = ipDaRequisicao(await headers()) ?? 'desconhecido';
   if (!(await consumirRateLimit(`convite:${ip}`, 10, 600))) {
@@ -57,11 +57,11 @@ export async function aceitarConvite(token: string, _anterior: EstadoConvite, fo
       } else {
         usuarioId = data.user.id;
       }
-      const { error: e3 } = await admin.from('funcionarios').upsert({ id: usuarioId, nome, email: convite.email });
+      const { error: e3 } = await admin.from('consultoras').upsert({ id: usuarioId, nome, email: convite.email });
       if (e3) throw e3;
     }
     await registrarAuditoria({
-      ator: `funcionario:${usuarioId}`,
+      ator: `consultora:${usuarioId}`,
       acao: convite.tipo === 'convite' ? `convite_equipe_aceito:${convite.id}` : 'senha_redefinida_por_link',
     });
   } catch (e) {

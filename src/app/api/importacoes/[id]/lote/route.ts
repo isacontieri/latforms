@@ -1,5 +1,5 @@
-import { exigirFuncionario } from '@/lib/auth';
-import { atualizarDadosDaFicha } from '@/lib/ficha/atualizar';
+import { exigirConsultora } from '@/lib/auth';
+import { atualizarFichaPeloRd } from '@/lib/ficha/atualizar';
 import { falha, lerCorpo, ok } from '@/lib/http';
 import { LoteSchema, planejarLote, resumir } from '@/lib/importacao/lote';
 import { anexarAvisosDeDuplicidade, buscarExistentes } from '@/lib/importacao/servidor';
@@ -12,8 +12,8 @@ import { criarClienteServidor } from '@/lib/supabase/server';
  * que ainda não a devolveram. Ficha devolvida não é alterada: o RD novo fica só para comparação.
  */
 export async function POST(req: Request, ctx: RouteContext<'/api/importacoes/[id]/lote'>) {
-  const funcionario = await exigirFuncionario();
-  if (funcionario instanceof Response) return funcionario;
+  const consultora = await exigirConsultora();
+  if (consultora instanceof Response) return consultora;
 
   const { id } = await ctx.params;
   const corpo = await lerCorpo(req, LoteSchema);
@@ -46,13 +46,13 @@ export async function POST(req: Request, ctx: RouteContext<'/api/importacoes/[id
       if (error) throw new Error(`upsert clientes: ${error.code}`);
     }
 
-    // fichas ainda não devolvidas acompanham o RD (uma por cliente; nunca duplica)
-    const ator = `funcionario:${funcionario.id}`;
+    // fichas que o cliente ainda não editou acompanham o RD (uma por cliente; nunca duplica)
+    const ator = `consultora:${consultora.id}`;
     for (const f of atualizarFichas) {
-      const atualizou = await atualizarDadosDaFicha(supabase, f, ator);
+      const atualizou = await atualizarFichaPeloRd(supabase, f, ator);
       if (!atualizou) {
         const r = resultados.find((x) => x.status !== 'erro' && existentes.get(x.rdId ?? '')?.ficha?.id === f.fichaId);
-        if (r) r.ficha = 'devolvida_rd_mudou'; // cliente devolveu durante a importação
+        if (r) r.ficha = 'devolvida_rd_mudou'; // o cliente começou a editar durante a importação
       }
     }
 

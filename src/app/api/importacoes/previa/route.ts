@@ -1,4 +1,4 @@
-import { exigirFuncionario } from '@/lib/auth';
+import { exigirConsultora } from '@/lib/auth';
 import { falha, lerCorpo, ok } from '@/lib/http';
 import { PreviaSchema, planejarLote } from '@/lib/importacao/lote';
 import { anexarAvisosDeDuplicidade, buscarExistentes } from '@/lib/importacao/servidor';
@@ -7,8 +7,8 @@ import { criarClienteServidor } from '@/lib/supabase/server';
 
 /** Prévia de um lote: diz o que aconteceria com cada linha, sem gravar nada. */
 export async function POST(req: Request) {
-  const funcionario = await exigirFuncionario();
-  if (funcionario instanceof Response) return funcionario;
+  const consultora = await exigirConsultora();
+  if (consultora instanceof Response) return consultora;
 
   const corpo = await lerCorpo(req, PreviaSchema);
   if (corpo instanceof Response) return corpo;

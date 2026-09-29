@@ -47,12 +47,12 @@ describe('planejarLote', () => {
     expect(plano.resultados[0].avisos).toContain('ID repetido no arquivo; vale a última ocorrência');
   });
 
-  describe('ficha: uma por cliente, atualizada enquanto não devolvida', () => {
+  describe('ficha: uma por cliente, acompanha o RD até o cliente editar', () => {
     const linha = linhas.find((l) => l.ID.endsWith('a03'))!;
     const atual = mapearParaFicha(extrairLinha(linha).dados.campos);
     const antiga = { ...atual, telefone: '(16) 90000-0000' };
     const com = (status: FichaExistente['status'], snapshot: unknown) =>
-      new Map<string, ClienteExistente>([[linha.ID, { id: 'c', ficha: { id: 'f1', status, versao: 3, snapshot } }]]);
+      new Map<string, ClienteExistente>([[linha.ID, { id: 'c', ficha: { id: 'f1', status, originais: snapshot } }]]);
 
     it('sem ficha: nada a atualizar', () => {
       const p = planejarLote([linha], 0, new Map([[linha.ID, { id: 'c', ficha: null }]]));
@@ -60,19 +60,19 @@ describe('planejarLote', () => {
       expect(p.atualizarFichas).toEqual([]);
     });
 
-    it.each(['gerada', 'enviada', 'aberta'] as const)('ficha "%s" com RD novo é atualizada (mesma ficha, versão +1)', (status) => {
+    it.each(['gerada', 'enviada', 'aberta'] as const)('ficha "%s" (cliente não editou) com RD novo é atualizada', (status) => {
       const p = planejarLote([linha], 0, com(status, antiga));
       expect(p.resultados[0].ficha).toBe('atualizada');
-      expect(p.atualizarFichas).toEqual([{ fichaId: 'f1', versao: 3, snapshot: atual }]);
+      expect(p.atualizarFichas).toEqual([{ fichaId: 'f1', dados: atual }]);
     });
 
-    it('ficha não devolvida e RD igual: sem mudança', () => {
+    it('cliente não editou e RD igual: sem mudança', () => {
       const p = planejarLote([linha], 0, com('enviada', atual));
       expect(p.resultados[0].ficha).toBe('sem_mudanca');
       expect(p.atualizarFichas).toEqual([]);
     });
 
-    it.each(['respondida', 'correcao_solicitada', 'aprovada'] as const)('ficha "%s" (devolvida) nunca é alterada', (status) => {
+    it.each(['em_preenchimento', 'concluida', 'aprovada'] as const)('ficha "%s" (cliente já editou) nunca é alterada', (status) => {
       const p = planejarLote([linha], 0, com(status, antiga));
       expect(p.resultados[0].ficha).toBe('devolvida_rd_mudou');
       expect(p.atualizarFichas).toEqual([]);
@@ -81,7 +81,7 @@ describe('planejarLote', () => {
 
     it('resumo conta fichas atualizadas e devolvidas com RD novo', () => {
       expect(resumir(planejarLote([linha], 0, com('aberta', antiga)).resultados)).toMatchObject({ fichasAtualizadas: 1, devolvidasComRdNovo: 0 });
-      expect(resumir(planejarLote([linha], 0, com('respondida', antiga)).resultados)).toMatchObject({ fichasAtualizadas: 0, devolvidasComRdNovo: 1 });
+      expect(resumir(planejarLote([linha], 0, com('em_preenchimento', antiga)).resultados)).toMatchObject({ fichasAtualizadas: 0, devolvidasComRdNovo: 1 });
     });
   });
 });

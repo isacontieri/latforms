@@ -37,18 +37,18 @@ export interface ResultadoLinha {
 
 /**
  * - `sem_ficha`: cliente ainda não tem ficha
- * - `atualizada`: ficha não devolvida recebe os dados novos do RD (o link continua o mesmo)
+ * - `atualizada`: o cliente ainda não editou nada; a ficha recebe os dados novos do RD (o link continua o mesmo)
  * - `sem_mudanca`: dados do RD iguais aos da ficha
- * - `devolvida_rd_mudou`: cliente já devolveu; a versão dele fica e o RD novo aparece para comparação
- * - `devolvida`: cliente já devolveu e o RD não mudou
+ * - `devolvida_rd_mudou`: o cliente já editou a ficha; ela não é tocada e o RD novo aparece para comparação
+ * - `devolvida`: o cliente já editou e o RD não mudou
  */
 export type AcaoFicha = 'sem_ficha' | 'atualizada' | 'sem_mudanca' | 'devolvida_rd_mudou' | 'devolvida';
 
 export interface FichaExistente {
   id: string;
   status: StatusFicha;
-  versao: number;
-  snapshot: unknown;
+  /** `dados_originais` (o que veio do RD na última atualização). */
+  originais: unknown;
 }
 
 export interface ClienteExistente {
@@ -59,8 +59,7 @@ export interface ClienteExistente {
 
 export interface FichaParaAtualizar {
   fichaId: string;
-  versao: number;
-  snapshot: DadosFicha;
+  dados: DadosFicha;
 }
 
 export interface ClienteParaSalvar {
@@ -74,7 +73,7 @@ export interface ClienteParaSalvar {
 export interface PlanoLote {
   resultados: ResultadoLinha[];
   salvar: ClienteParaSalvar[];
-  /** Fichas ainda não devolvidas que recebem os dados novos do RD. */
+  /** Fichas que o cliente ainda não editou e recebem os dados novos do RD. */
   atualizarFichas: FichaParaAtualizar[];
   /** CPF/e-mail de cada linha válida (para o aviso de possível duplicado). */
   documentos: DocContato[];
@@ -116,7 +115,7 @@ export function planejarLote(
     resultado.status = existente ? 'atualizado' : 'novo';
     const ficha = existente?.ficha ?? null;
     if (ficha) {
-      const mudou = !jsonIgual(ficha.snapshot, dadosFicha);
+      const mudou = !jsonIgual(ficha.originais, dadosFicha);
       if (aceitaDadosDoRd(ficha.status)) resultado.ficha = mudou ? 'atualizada' : 'sem_mudanca';
       else resultado.ficha = mudou ? 'devolvida_rd_mudou' : 'devolvida';
     }
@@ -127,7 +126,7 @@ export function planejarLote(
     porRdId.set(ext.rdId, {
       resultado,
       cliente: { rd_id: ext.rdId, nome: ext.nome, email: ext.email, dados_rd: ext.dados, dados_ficha: dadosFicha },
-      atualizar: resultado.ficha === 'atualizada' && ficha ? { fichaId: ficha.id, versao: ficha.versao, snapshot: dadosFicha } : null,
+      atualizar: resultado.ficha === 'atualizada' && ficha ? { fichaId: ficha.id, dados: dadosFicha } : null,
     });
   });
 

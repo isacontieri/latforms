@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { verificarFuncionario } from '@/lib/auth';
+import { verificarConsultora } from '@/lib/auth';
 import { criarClienteServidor } from '@/lib/supabase/server';
 
 export const metadata: Metadata = { title: 'Clientes — LatForms' };
@@ -13,7 +13,7 @@ const formatarData = new Intl.DateTimeFormat('pt-BR', {
 });
 
 export default async function PaginaAdmin() {
-  const auth = await verificarFuncionario();
+  const auth = await verificarConsultora();
   if (!auth.ok) redirect('/login');
 
   const supabase = await criarClienteServidor();
