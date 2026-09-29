@@ -2,9 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Marca } from '@/components/Marca';
 import { dentroDoLimiteCliente, validarTokenCliente } from '@/lib/ficha/acesso-cliente';
-import { proximoStatus } from '@/lib/ficha/status';
 import { primeiroNome } from '@/lib/rd/extrair';
-import { EnviarFicha } from './EnviarFicha';
 
 export const metadata: Metadata = { title: 'Ficha de Cadastro — Latitudes', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -44,7 +42,6 @@ export default async function PaginaCliente({ params }: PageProps<'/f/[token]'>)
 
   const { ficha } = acesso;
   const nome = primeiroNome(acesso.cliente.nome);
-  const aceitaEnvio = proximoStatus(ficha.status, 'upload_valido') !== null;
   const jaEnviou = ficha.respondidaEm !== null;
 
   return (
@@ -96,11 +93,6 @@ export default async function PaginaCliente({ params }: PageProps<'/f/[token]'>)
         <Passo n={3} titulo="Salve o arquivo">
           <p className="text-sm">Salve no seu computador, mantendo o formato PDF.</p>
         </Passo>
-        {aceitaEnvio && (
-          <Passo n={4} titulo="Envie aqui">
-            <EnviarFicha token={token} rotulo={jaEnviou ? 'Enviar a ficha de novo' : 'Clique para escolher a ficha preenchida'} />
-          </Passo>
-        )}
       </ol>
 
       <p className="text-xs text-texto/60">

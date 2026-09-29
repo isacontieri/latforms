@@ -1,175 +1,173 @@
 # LatForms — Motor de Fichas de Cadastro Latitudes
 Plano de implementação (para desenvolvimento com Claude Code)
-**Versão 3: 100% com ferramentas e planos gratuitos (Vercel Hobby + Supabase Free)**
+**Versão 3: ficha preenchida direto no link + acompanhamento em tempo real pelas consultoras. Custo zero (Vercel + Supabase Free).**
+
+## Decisões desta implementação (29/09/2026) — prevalecem sobre o texto abaixo
+
+Aprovadas pela responsável ao iniciar a v3:
+
+1. **Ficha com os 71 campos** (66 do formulário do RD + 5 do modelo de 2024), não os 35 do modelo Scribus. A definição dos campos (rótulo, tipo, origem no RD, seção) fica em `src/lib/ficha/campos.ts`; o **`src/lib/ficha/ficha-layout.json` é gerado** a partir do gerador do PDF (`npm run ficha:layout`) com o mesmo formato descrito aqui (`chave`, `rotulo`, `tipo`, `campoPdf`, `opcoes`, `pos` em % da página) **mais `pagina`**, porque a ficha tem várias páginas A4. Fundos: `public/ficha/pagina-<n>.webp`. Um teste garante que o JSON está em sincronia com o gerador. O modelo de 2024 fica só como referência em `docs/modelo-2024/`; o PDF final é o gerado pelo sistema (`lib/ficha/pdf/gerar.ts`), preenchido com `dados_atuais`.
+2. **Reimportação do RD:** a ficha acompanha o RD (`dados_originais` e `dados_atuais` atualizados) enquanto o cliente **não editou nenhum campo** (status `gerada`, `enviada`, `aberta`). Depois da primeira edição (`em_preenchimento` em diante), a importação atualiza só o cliente; a ficha não é tocada e o painel mostra as diferenças do RD para consulta. Uma ficha ativa por cliente (índice único).
+3. **Next.js 16** com `src/proxy.ts` (não `middleware.ts`); chaves novas do Supabase: `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` e **`SUPABASE_SECRET_KEY`** (a `service_role` legada deixa de existir no fim de 2026).
+4. **Equipe gerenciada no app** (`/admin/equipe`: convite por link de uso único, link de nova senha, remover acesso), em vez de criar consultoras no painel do Supabase. Tabela `consultoras` (antes `funcionarios`), função `is_consultora()`.
+5. **Status `aberta`** é marcado no primeiro sinal de presença do navegador (JavaScript rodando), não no GET da página: pré-visualizações de link (WhatsApp, e-mail) também abrem a URL.
+6. Envio de links pela equipe: botão **"Enviar pelo Outlook"** (Outlook na web, Microsoft 365 da Latitudes) + copiar mensagem.
+7. Pendências com padrão definido (TODO no código): verificação da data de nascimento atrás de `EXIGIR_VERIFICACAO` (desligada); campo revertido ao original não fica amarelo (histórico registra); obrigatórios para concluir em `layout.ts` (nome, nascimento, CPF, celular, e-mail, contato e telefone de emergência); consultora só visualiza (`origem = 'consultora'` preparado no banco).
+
+Lições já aprendidas neste projeto (manter):
+- `supabase config push` aplica direto: prévia só com `supabase config diff`. `[auth.email] enable_signup` desliga o login por e-mail inteiro; para fechar cadastro use só `[auth] enable_signup = false`.
+- Arquivos lidos do disco em runtime: caminho **literal** em `path.join(process.cwd(), 'assets', …)` (com variável o Turbopack inclui o projeto inteiro) + `outputFileTracingIncludes` no `next.config.ts`.
+- `proxy.ts` não redireciona `/login` → `/admin` por sessão (JWT de conta removida → loop).
+- Formulários client com `fetch`: `onSubmit` + `preventDefault` (não `<form action={fn}>`).
+- `Cache-Control` de páginas só é confiável em `next build && next start`.
+- No Windows, parar o servidor em background não mata o `node`: conferir a porta 3000 antes de testar.
 
 ## 1. Objetivo
 
-A equipe interna importa o CSV exportado do RD Station. O motor transforma cada contato numa **Ficha de Cadastro Latitudes em PDF preenchível**, já pré-preenchida com o que o cliente informou no formulário. **Todas as colunas do CSV são extraídas e guardadas**, inclusive as que não têm campo no PDF (altura, médico, aeroporto, acompanhantes etc.), e ficam visíveis para a equipe e na exportação. Cada ficha fica disponível num **link com token** que a equipe copia e envia ao cliente pelos canais que já usa (o sistema não se integra a nenhum serviço de mensagem). O cliente abre o link, baixa o PDF, confere/completa os dados e devolve o arquivo pelo mesmo link.
-
-Dois tipos de acesso:
-- **Funcionários:** login com e-mail + senha (Supabase Auth), área `/admin`.
-- **Clientes:** sem login; acesso só pelo link `/f/<token>`.
+A equipe importa o CSV exportado do RD Station. O LatForms cria, para cada contato, uma **ficha online com a cara do PDF "Ficha de Cadastro Latitudes"**, já pré-preenchida. A consultora envia ao cliente um **link com token**. O cliente abre o link e **edita a ficha ali mesmo, no navegador** — sem baixar nada. Cada alteração é salva automaticamente e **aparece na hora** na tela da consultora, com o **campo editado destacado em amarelo**.
 
 **Fluxo:**
 
 ```
-RD Station ──export CSV──▶ [Funcionário logado] Importar CSV
-                                   │  (CSV lido no navegador, enviado em lotes)
-                                   ▼
-                     Parser + normalização + mapeamento (servidor)
+RD Station ──CSV──▶ [Consultora logada] Importar CSV ▶ clientes no banco
                                    │
                                    ▼
-                 Cliente salvo no banco (upsert pelo ID do RD)
+                 Gerar ficha + link /f/<token> ▶ envia ao cliente
+                                   │
+          ┌────────────────────────┴───────────────────────────┐
+          ▼                                                    ▼
+  CLIENTE abre o link                               CONSULTORA abre a ficha
+  Ficha no layout do PDF                            no painel (mesmo layout)
+  (celular: modo lista)                                       ▲
+          │                                                    │
+          │ clica num campo ─▶ POST /presenca ─▶ Realtime ─────┤  contorno azul
+          │                                     (broadcast)    │  "cliente editando"
+          │ altera o valor  ─▶ PATCH /campos ─▶ banco ─────────┤
+          │   (autosave)                        + Realtime     │  campo AMARELO
+          ▼                                                    │  + histórico
+  "Concluir ficha" ─▶ status concluída ─▶ Realtime ────────────┘
                                    │
                                    ▼
-                Gera link /f/<token>  ──(equipe copia e envia ao cliente)
-                                   │
-                                   ▼
-   Cliente abre o link ▶ baixa o PDF gerado na hora (template + dados, pdf-lib)
-                                   │
-                                   ▼
-   Cliente confere/completa ▶ envia o PDF pelo mesmo link
-   (upload direto para o Supabase Storage via URL assinada)
-                                   │
-                                   ▼
-     Motor valida e lê os campos do PDF ▶ status "respondida"
-                                   │
-                                   ▼
-   Funcionário revisa ▶ aprova, pede correção, baixa o PDF ou exporta CSV
+        Consultora revisa ▶ aprova ▶ baixa PDF final / exporta CSV
 ```
 
 ## 2. Custo: R$ 0
 
-| Ferramenta | Uso no projeto | Plano | Custo |
+| Ferramenta | Uso | Plano | Custo |
 |---|---|---|---|
-| Vercel | Hospedagem do Next.js + cron diário | Hobby | Grátis |
-| Supabase | Postgres, Auth, Storage | Free | Grátis |
-| GitHub | Repositório privado **em conta pessoal** + Actions (CI e backup) | Free | Grátis |
+| Vercel | Hospedagem Next.js + cron diário | Hobby | Grátis |
+| Supabase | Postgres, Auth, **Realtime** | Free | Grátis |
+| GitHub | Repositório privado + Actions (CI e backup) | Free | Grátis |
 | Next.js, TypeScript, Tailwind, shadcn/ui | App | Open source | Grátis |
-| pdf-lib, papaparse, zod | PDF, CSV, validação | Open source | Grátis |
+| pdf-lib, papaparse, zod | PDF final, CSV, validação | Open source | Grátis |
 | Vitest, Playwright | Testes | Open source | Grátis |
-| Node.js, VS Code, Supabase CLI | Ambiente de desenvolvimento | Open source | Grátis |
 
-**Fora do projeto para não gerar custo:** Upstash (rate limit é feito no Postgres), Docker Desktop (o dev usa um 2º projeto Supabase Free), serviço de e-mail transacional e integrações com mensageiros (a equipe copia o link e envia manualmente).
+**Simplificações em relação à versão 2:** não há mais upload de PDF pelo cliente, então o **Supabase Storage não é usado** (o limite de 1 GB deixa de ser problema) e o fluxo de URL assinada, leitura do PDF devolvido e validação de arquivo foram removidos.
 
-> O Claude Code, usado para escrever o código, não faz parte do sistema e exige plano pago do Claude — ele é ferramenta de desenvolvimento, não de execução. O sistema em si roda sem nenhum custo.
+> O Claude Code é ferramenta de desenvolvimento (plano pago do Claude). O sistema em si roda sem custo.
 
-## 3. ⚠️ Pontos de atenção dos planos gratuitos
+## 3. Pontos de atenção dos planos gratuitos
 
-| Risco | Detalhe | Como o projeto contorna |
-|---|---|---|
-| **Vercel Hobby é "não comercial"** | Os termos limitam o Hobby a uso pessoal e não comercial. Um sistema interno da Latitudes pode ser considerado uso comercial e a Vercel pode suspender o projeto. | Verificar em qual conta/plano a Latitudes já usa a Vercel. Se houver time Pro, criar o projeto nele. Se não, **levar esse ponto ao gestor**. |
-| **Vercel Hobby não faz deploy de repositório privado de organização do GitHub** | Só repositório privado de conta pessoal (ou repositório público de organização). | Repositório privado na conta pessoal de quem mantém o projeto, com os demais como colaboradores. Se o repo precisar ficar na organização da Latitudes, é preciso Vercel Pro. |
-| Supabase pausa após 1 semana sem uso | Os dados não se perdem, mas o link do cliente para de funcionar até alguém reativar. | Vercel Cron diário chama `/api/cron/manutencao`, que faz uma consulta no banco. |
-| Supabase Free: 2 projetos ativos **por conta** | Se a conta já tiver outro projeto Free, não cabem `dev` + `prod`. | Usar uma conta/organização Supabase dedicada ao LatForms. |
-| Supabase Free não tem backup | Sem backup automático nem restauração pontual. | GitHub Actions diário faz `pg_dump` (dados do `public` + usuários do `auth`), criptografa com `gpg` e guarda como artefato por 30 dias. **Os PDFs do Storage não entram no backup** (os dados lidos deles, sim, estão no banco). |
-| Storage de 1 GB | Um PDF da ficha tem ~1,2 MB → ~800 arquivos. | PDFs gerados **não são guardados**. CSV **não é guardado**. Só o PDF devolvido pelo cliente fica no Storage, apagado 90 dias após a aprovação; uploads não confirmados são apagados em 1 dia. |
-| Banco de 500 MB | | Suficiente para dezenas de milhares de fichas (~10 KB de JSON cada). |
-| Vercel: corpo da requisição ≤ 4,5 MB | Vale para o CSV e para o PDF. | PDF do cliente vai **direto para o Supabase Storage** (URL assinada). O CSV é lido no navegador e enviado em **lotes de até 200 linhas** em JSON. |
-| URL assinada de upload vale 2 h (fixo) | O Supabase não permite prazo menor. | A URL só grava num caminho novo e único (`upsert: false`), e nada vale até passar pela validação de `/confirmar`. |
-| Vercel Hobby: cron só 1x por dia | Horário aproximado (dentro da hora). | Suficiente para keep-alive e limpeza. |
-| Vercel Hobby: 4 h de CPU ativa/mês | Gerar um PDF leva ~100–300 ms. | Dá para milhares de fichas por mês. |
-| Supabase: e-mail padrão tem limite baixo | Convites por e-mail podem falhar. | Funcionários criados manualmente no painel (Auth → Add user). São poucos. |
-| Chaves legadas do Supabase | `anon` e `service_role` serão descontinuadas no fim de 2026. | Usar desde o início as chaves novas: **publishable** (`sb_publishable_…`) e **secret** (`sb_secret_…`). |
-| Logs curtos | Vercel guarda 1 h; Supabase 1 dia. | Tabela `auditoria` própria no banco. |
+| Risco | Como o projeto contorna |
+|---|---|
+| **Vercel Hobby é "não comercial"** pelos termos | A Latitudes já usa Vercel: se houver um time Pro da empresa, criar o projeto nele. Se tudo for Hobby, **levar ao gestor**. |
+| Supabase pausa após 1 semana sem atividade | Cron diário da Vercel (`/api/cron/manutencao`) faz uma consulta no banco. |
+| Supabase Free não tem backup | GitHub Actions diário: `pg_dump` → `gpg` → artefato privado (30 dias). |
+| Realtime Free: 200 conexões simultâneas e 2 milhões de mensagens/mês | Só as consultoras se conectam ao Realtime (o cliente não). Autosave com debounce e presença só na troca de campo → poucas mensagens por ficha. |
+| Banco de 500 MB | Cada ficha + histórico ≈ 20–50 KB → dezenas de milhares de fichas. Limpeza de histórico antigo no cron. |
+| Vercel Hobby: cron 1x/dia, 4 h de CPU/mês | Autosave é uma escrita leve (~20 ms); PDF só é gerado quando a consultora baixa. |
+| E-mail do Supabase com limite baixo | Consultoras criadas manualmente no painel do Supabase. |
 
 ## 4. Decisões
 
 | Tema | Decisão |
 |---|---|
-| Stack | Next.js 16 (App Router, `proxy.ts`) + TypeScript + Supabase (Auth, Postgres, Storage) |
-| Região | Supabase em `sa-east-1` (São Paulo); funções Vercel em `gru1` (`vercel.json` → `"regions": ["gru1"]`) |
-| Login | Somente funcionários (Supabase Auth, e-mail + senha, cadastro público desativado) |
-| Autorização | `proxy.ts` só renova a sessão e redireciona para `/login`. **A checagem de funcionário (`funcionarios`) é feita em cada layout/route handler** com `exigirFuncionario()` |
-| Acesso do cliente | Sem login. Link `/f/<token>` com token aleatório de 32 bytes, guardado como hash SHA-256, com expiração e revogação |
-| Saída | PDF preenchível (AcroForm) gerado **sob demanda** a partir do modelo, **sem achatar** |
-| Entrada | CSV exportado manualmente do RD Station |
-| Rate limit | Função no Postgres (tabela `rate_limit`), executável só pelo servidor |
+| Stack | Next.js 15 (App Router) + TypeScript + Supabase (Auth, Postgres, Realtime) |
+| Região | Supabase `sa-east-1`; funções Vercel `gru1` |
+| Login | Só equipe interna (consultoras), e-mail + senha, cadastro público desativado |
+| Acesso do cliente | Sem login, link `/f/<token>` (32 bytes aleatórios, hash SHA-256, expira, revogável) |
+| **Ficha do cliente** | Página web que reproduz o PDF: imagem de fundo do modelo + campos HTML posicionados nas coordenadas exatas dos campos do PDF (`assets/ficha-layout.json`). Em telas < 768 px, **modo lista** (mesmos campos empilhados por seção), porque o A4 fica ilegível no celular |
+| **Salvamento** | Autosave por campo (debounce 800 ms e ao sair do campo) via `PATCH /api/f/[token]/campos`; indicador "Salvo ✓" |
+| **Tempo real** | Supabase Realtime **Broadcast em canal privado** `ficha:<id>`. O servidor publica após gravar; só consultoras autenticadas assinam. O cliente nunca conecta ao Realtime |
+| **Destaque** | Campo cujo valor atual ≠ valor original (vindo do CSV) fica **amarelo** na tela da consultora. Campo com o cliente dentro agora ganha **contorno azul** "editando agora". Alteração recém-chegada pisca por 2 s |
+| PDF | Gerado sob demanda a partir dos dados atuais, só para download da equipe (e cópia opcional do cliente após concluir) |
 | Ambientes | 2 projetos Supabase Free: `latforms-dev` e `latforms-prod` |
-| Domínio | `latforms.vercel.app` (gratuito) |
+| Domínio | `latforms.vercel.app` |
 
-## 5. O que já foi analisado nos arquivos
+## 5. Arquivos de apoio já gerados
 
-**CSV do RD Station**
-- UTF-8 (pode ter BOM), separador vírgula, **primeira linha é `sep=,`** (descartar antes do parse, depois de remover o BOM); cabeçalho na linha 2.
-- 98 colunas, todas catalogadas em `.claude/skills/ficha-cadastro-latitudes/colunas-rd.md` (chave, grupo, tipo, se é dado de saúde). Alguns cabeçalhos têm espaço no início ou espaços duplos → normalizar (trim + colapsar espaços).
-- Colunas quase duplicadas que são combinadas: `Estado` / `Estado:`, `Segue alguma dieta?` / `Você segue alguma dieta?`, `Comentário ou infos extras` / `Comentários ou informações extras...`, as duas perguntas de mídia digital/impressa.
-- `Nº do passaporte` e `N° Passaporte estrangeiro` usam símbolos diferentes (º ordinal × ° grau) — não unificar.
-- `Primeiro nome` às vezes traz o nome completo → a página do cliente usa a primeira palavra de `Nome`.
-- Colunas de texto livre às vezes trazem só "Não!" → tratadas como vazias.
-- Formatos inconsistentes: data de nascimento vem como `1960-02-19` **ou** `18/03/1945`; telefone pode vir com vários números separados por `;`; respostas sim/não vêm como `sim`, `nao`, `Não!`.
-- Contatos podem vir quase vazios (inclusive sem nome) → ainda assim geram ficha.
-- Coluna `ID` = ID do contato no RD → chave única para upsert.
-- Se o RD ganhar colunas novas, elas não se perdem: vão para `dados_rd.extras` e a prévia da importação avisa.
-- **O export real tem dados pessoais e de saúde e não entra no repositório.** Os testes usam `tests/fixtures/rd-export.csv`, com o mesmo cabeçalho e dados fictícios.
+| Arquivo | Onde colocar | O que é |
+|---|---|---|
+| `assets/ficha-bg.webp` (e `.png`) | `public/ficha/ficha-bg.webp` | Página do modelo renderizada a 144 dpi **sem os campos** e sem o parágrafo "salve o arquivo no seu computador" (esse espaço vira instruções em HTML) |
+| `assets/ficha-layout.json` | `src/lib/ficha/ficha-layout.json` | Os 35 campos: chave, rótulo, tipo, nome no PDF, opções e **posição em % da página** (`left`, `top`, `width`, `height`). Já validado sobrepondo inputs na imagem |
+| PDF modelo | `assets/templates/ficha-cadastro-2024.pdf` | Usado para gerar o PDF final |
 
-**PDF da ficha (modelo v2, 25/09/2026)**
-- Decisão da equipe: o PDF traz **todos os 66 campos do formulário do RD** (lista aprovada) + os 5 campos do modelo de 2024 que só o cliente preenche (estado civil, convênio médico, condicionamento físico, diabético(a)?, distúrbio cardio-respiratório?) = **71 campos editáveis**.
-- O modelo Scribus de 2024 (35 campos, 1 página) foi aposentado: o **sistema gera o PDF inteiro** (`lib/ficha/campos.ts` + `lib/ficha/pdf/gerar.ts`), no mesmo visual — logo extraído do modelo, Open Sans (OFL), laranja `#DA8E1E`, campos `#CFD6DA`. Cerca de 4 páginas A4. O modelo antigo fica em `docs/modelo-2024/` só como referência.
-- Colunas do CSV fora da lista (ex.: qual dieta, cargo, gênero, aeroporto, observações internas) continuam guardadas e visíveis só para a equipe.
+## 6. Análise dos arquivos de origem
 
-## 6. Modelo de dados (Supabase)
+**CSV do RD Station:** UTF-8, primeira linha `sep=,`, 98 colunas, cabeçalhos com espaços extras, colunas quase duplicadas (`Estado`/`Estado:` etc.), datas em dois formatos, telefones múltiplos com `;`, sim/não em várias grafias, contatos quase vazios, coluna `ID` como chave. Detalhes e regras no SKILL.md.
+
+**PDF modelo:** A4, 35 campos (texto, 6 dropdowns, 3 checkboxes). Campos sem fonte no CSV ficam para o cliente: Estado civil, Convênio médico, Condicionamento físico, Diabético(a)?, Distúrbio cardio-respiratório?. Obs.: o modelo tem um erro de digitação ("restições") que aparece na imagem de fundo — corrigir no Scribus se quiserem.
+
+## 7. Modelo de dados (Supabase)
 
 ```sql
-create table funcionarios (
+create table consultoras (
   id uuid primary key references auth.users on delete cascade,
   nome text not null,
   criado_em timestamptz default now()
 );
 
--- usado pelas políticas de RLS (evita recursão ao consultar funcionarios)
-create or replace function is_funcionario() returns boolean
-language sql stable security definer set search_path = public as $$
-  select exists (select 1 from funcionarios where id = auth.uid())
-$$;
-
 create table importacoes (
   id uuid primary key default gen_random_uuid(),
-  arquivo_nome text not null,            -- só o nome; o CSV não é guardado
+  arquivo_nome text not null,
   total_linhas int not null,
   criados int not null default 0,
   atualizados int not null default 0,
   erros jsonb not null default '[]',
-  importado_por uuid references funcionarios(id),
+  importado_por uuid references consultoras(id),
   criado_em timestamptz default now()
 );
 
 create table clientes (
   id uuid primary key default gen_random_uuid(),
   rd_id text unique not null,
-  nome text not null,                    -- fallback: e-mail ou '(sem nome)'
+  nome text not null,
   email text,
-  dados_rd jsonb not null,               -- { campos: todas as colunas do catálogo normalizadas, extras: colunas desconhecidas, original: linha bruta }
-  dados_ficha jsonb not null,            -- campos mapeados para a ficha
+  dados_rd jsonb not null,
+  dados_ficha jsonb not null,            -- mapeado do CSV
   ultima_importacao_id uuid references importacoes(id),
   criado_em timestamptz default now(),
   atualizado_em timestamptz default now()
 );
 
-create type status_ficha as enum (
-  'gerada',               -- ficha criada, sem link
-  'enviada',              -- link gerado
-  'aberta',               -- cliente baixou o PDF
-  'respondida',           -- PDF devolvido e validado
-  'correcao_solicitada',  -- funcionário pediu correção; cliente pode reenviar
-  'aprovada',
-  'cancelada'
-);
+create type status_ficha as enum
+  ('gerada','enviada','aberta','em_preenchimento','concluida','aprovada','cancelada');
 
 create table fichas (
   id uuid primary key default gen_random_uuid(),
   cliente_id uuid not null references clientes(id) on delete cascade,
-  versao int not null default 1,
   status status_ficha not null default 'gerada',
-  dados_snapshot jsonb not null,         -- dados_ficha no momento da geração (PDF é regerado a partir daqui)
-  pdf_respondido_path text,              -- storage: fichas-respondidas/
-  dados_respondidos jsonb,
-  motivo_correcao text,                  -- texto curto, sem dados sensíveis (aparece na página do cliente)
-  criado_por uuid references funcionarios(id),
+  dados_originais jsonb not null,        -- snapshot do CSV no momento da geração (base do amarelo)
+  dados_atuais jsonb not null,           -- o que está na ficha agora
+  campo_em_foco text,                    -- último campo em que o cliente clicou
+  cliente_visto_em timestamptz,          -- último sinal do cliente (online se < 60 s)
+  criado_por uuid references consultoras(id),
   criado_em timestamptz default now(),
-  respondida_em timestamptz,
+  atualizado_em timestamptz default now(),
+  concluida_em timestamptz,
   aprovada_em timestamptz
 );
+
+create table ficha_edicoes (             -- histórico campo a campo
+  id bigserial primary key,
+  ficha_id uuid not null references fichas(id) on delete cascade,
+  campo text not null,
+  valor_anterior jsonb,
+  valor_novo jsonb,
+  origem text not null default 'cliente',  -- 'cliente' | 'consultora'
+  criado_em timestamptz default now()
+);
+create index on ficha_edicoes (ficha_id, criado_em desc);
 
 create table tokens_acesso (
   id uuid primary key default gen_random_uuid(),
@@ -181,220 +179,187 @@ create table tokens_acesso (
   ultimo_acesso_em timestamptz,
   criado_em timestamptz default now()
 );
--- no máximo 1 token ativo por ficha
-create unique index tokens_um_ativo on tokens_acesso (ficha_id) where revogado_em is null;
 
 create table auditoria (
   id bigserial primary key,
-  ator text not null,
-  acao text not null,
-  ficha_id uuid,
-  ip inet,
-  user_agent text,
-  criado_em timestamptz default now()
+  ator text not null, acao text not null, ficha_id uuid,
+  ip inet, user_agent text, criado_em timestamptz default now()
 );
 
--- rate limit sem serviço externo
-create table rate_limit (
-  chave text primary key,                -- ex.: 'f:<ip>'
-  janela_inicio timestamptz not null,
-  contagem int not null
-);
+create table rate_limit (chave text primary key, janela_inicio timestamptz not null, contagem int not null);
+-- função consumir_rate_limit(p_chave, p_limite, p_janela_seg) → boolean (ver SKILL.md)
 
-create or replace function consumir_rate_limit(p_chave text, p_limite int, p_janela_seg int)
-returns boolean language plpgsql security definer set search_path = public as $$
-declare v_ok boolean;
+-- grava 1 campo de forma atômica + histórico; ignora se o valor não mudou
+create or replace function atualizar_campo(p_ficha uuid, p_campo text, p_valor jsonb, p_origem text)
+returns jsonb language plpgsql security definer as $$
+declare v_ant jsonb;
 begin
-  insert into rate_limit as r (chave, janela_inicio, contagem)
-  values (p_chave, now(), 1)
-  on conflict (chave) do update set
-    contagem     = case when r.janela_inicio < now() - make_interval(secs => p_janela_seg) then 1 else r.contagem + 1 end,
-    janela_inicio= case when r.janela_inicio < now() - make_interval(secs => p_janela_seg) then now() else r.janela_inicio end
-  returning contagem <= p_limite into v_ok;
-  return v_ok;
+  select dados_atuais -> p_campo into v_ant from fichas where id = p_ficha for update;
+  if v_ant is not distinct from p_valor then return null; end if;
+  update fichas set
+    dados_atuais = jsonb_set(dados_atuais, array[p_campo], coalesce(p_valor,'null'::jsonb)),
+    status = case when status in ('enviada','aberta') then 'em_preenchimento' else status end,
+    atualizado_em = now()
+  where id = p_ficha;
+  insert into ficha_edicoes (ficha_id, campo, valor_anterior, valor_novo, origem)
+  values (p_ficha, p_campo, v_ant, p_valor, p_origem);
+  return jsonb_build_object('campo', p_campo, 'anterior', v_ant, 'novo', p_valor, 'em', now());
 end $$;
-
--- funções do schema public ficam expostas em /rest/v1/rpc: só o servidor pode chamar esta
-revoke execute on function consumir_rate_limit(text, int, int) from public, anon, authenticated;
-grant execute on function consumir_rate_limit(text, int, int) to service_role;
 ```
 
-A troca de link (revogar o anterior + criar o novo) é feita numa função SQL `gerar_link(ficha_id, token_hash, expira_em)` em uma transação, com as mesmas permissões de `consumir_rate_limit`.
+**RLS:** habilitado em tudo; acesso só se `auth.uid()` está em `consultoras`. Rotas do cliente usam `service_role` só no servidor.
 
-**RLS:** habilitado em todas as tabelas; políticas usam `is_funcionario()`. `rate_limit` fica sem políticas (só acessível pela secret key). Rotas do cliente usam a **secret key** apenas no servidor.
+**Realtime:** nas configurações do Realtime, desligar acesso público a canais (só canais privados). Política em `realtime.messages`:
+```sql
+create policy "consultoras recebem broadcast das fichas"
+on realtime.messages for select to authenticated
+using ( realtime.topic() like 'ficha:%'
+        and exists (select 1 from consultoras where id = auth.uid()) );
+```
 
-**Storage:** um único bucket privado `fichas-respondidas/`, limite de 5 MB por arquivo e MIME `application/pdf` (configurado no bucket). O template fica no repositório (`assets/templates/`).
+## 8. Rotas
 
-## 7. Rotas
-
-**Área interna** — `proxy.ts` redireciona quem não está logado para `/login`; o layout de `/admin` e cada route handler chamam `exigirFuncionario()` (sessão válida + registro em `funcionarios`, senão 403).
+**Painel das consultoras (login)**
 
 | Rota | Função |
 |---|---|
-| `/login` | Login dos funcionários |
-| `/admin` | Lista de fichas com filtros por status e busca |
-| `/admin/importar` | Selecionar CSV → prévia → confirmar |
-| `/admin/equipe` | Quem tem acesso; gerar link de convite (7 dias) ou de nova senha (24 h); remover acesso |
-| `/admin/clientes/[id]` | Todas as colunas do RD agrupadas, dados mapeados para a ficha, histórico, gerar ficha/link, revogar, baixar PDFs, comparar gerado × respondido, aprovar / pedir correção |
+| `/login` | Login |
+| `/admin` | Lista de fichas: status, % preenchido, nº de campos alterados, "cliente online agora" (atualiza em tempo real) |
+| `/admin/importar` | CSV → prévia → confirmar |
+| `/admin/fichas/[id]` | **Ficha ao vivo**: mesmo layout do PDF, campos amarelos, contorno azul no campo em foco, painel lateral "Atividade" com histórico (campo, antes → depois, horário), filtro "só alterados", botões gerar/revogar link, copiar mensagem, aprovar, reabrir, baixar PDF |
 
 **API**
 
 | Método | Endpoint | Auth |
 |---|---|---|
-| POST | `/api/importacoes/previa` `{ inicio, linhas[] }` (≤ 200 linhas) → o que aconteceria com cada linha, sem gravar | funcionário |
-| POST | `/api/importacoes` `{ arquivoNome, totalLinhas }` → cria a importação (na confirmação) | funcionário |
-| POST | `/api/importacoes/[id]/lote` `{ inicio, linhas[] }` (≤ 200 linhas) → grava (upsert por `rd_id`) | funcionário |
-| POST | `/api/fichas` `{ clienteId }` → gera a ficha ou atualiza a existente com o RD (409 se já devolvida) | funcionário |
-| POST | `/api/fichas/[id]/link` → retorna URL com token (mostrada uma vez) | funcionário |
-| DELETE | `/api/fichas/[id]/link` → revoga | funcionário |
-| POST | `/api/fichas/[id]/status` `{ acao: 'aprovar' \| 'pedir_correcao' \| 'cancelar', motivo? }` | funcionário |
-| POST | `/api/fichas/lote` `{ clienteIds[] }` | funcionário |
-| GET | `/api/fichas/[id]/pdf?tipo=gerado\|respondido` | funcionário |
-| GET | `/api/exportar?status=respondida` → CSV com todas as colunas do RD + dados respondidos | funcionário |
-| POST | `/api/equipe/convites` `{ email, nome? }` → link de convite (uso único) | funcionário |
-| DELETE | `/api/equipe/convites/[id]` → cancela link pendente | funcionário |
-| POST | `/api/equipe/[id]/nova-senha` → link de nova senha | funcionário |
-| DELETE | `/api/equipe/[id]` → remove o acesso | funcionário |
-| GET | `/convite/[token]` → criar acesso ou nova senha (sem login) | token |
-| GET | `/f/[token]` → página do cliente | token |
-| GET | `/api/f/[token]/pdf` → gera e baixa o PDF na hora | token |
-| POST | `/api/f/[token]/upload-url` → URL assinada de upload no Storage | token |
-| POST | `/api/f/[token]/confirmar` → valida o PDF enviado e lê os campos | token |
-| GET | `/api/cron/manutencao` → keep-alive + limpeza (`Authorization: Bearer CRON_SECRET`) | cron |
+| POST | `/api/importacoes` (`?dryRun=true`) | consultora |
+| POST | `/api/fichas` `{ clienteId }` | consultora |
+| POST / DELETE | `/api/fichas/[id]/link` | consultora |
+| POST | `/api/fichas/[id]/aprovar` · `/reabrir` | consultora |
+| GET | `/api/fichas/[id]/pdf` | consultora |
+| GET | `/api/exportar?status=concluida` | consultora |
+| GET | `/f/[token]` — ficha do cliente | token |
+| PATCH | `/api/f/[token]/campos` `{ campo, valor }` — autosave | token |
+| POST | `/api/f/[token]/presenca` `{ campo \| null }` — foco/heartbeat | token |
+| POST | `/api/f/[token]/concluir` | token |
+| GET | `/api/f/[token]/pdf` — cópia após concluir | token |
+| GET | `/api/cron/manutencao` | `CRON_SECRET` |
 
-`proxy.ts` **não** intercepta `/f/*`, `/api/f/*` nem `/api/cron/*` (essas rotas têm autenticação própria).
+**Eventos no canal `ficha:<id>`**
 
-## 8. Ciclo de vida da ficha
-
-| De | Evento | Para |
+| Evento | Payload | Efeito na tela da consultora |
 |---|---|---|
-| — | Funcionário cria a ficha | `gerada` |
-| `gerada` / `enviada` / `aberta` | Funcionário gera link (revoga o anterior) | `enviada` (se ainda não aberta) |
-| `enviada` | Cliente **baixa o PDF** (não basta abrir a página: pré-visualizações de link e antivírus de e-mail também abrem a URL) | `aberta` |
-| `enviada` / `aberta` / `respondida` / `correcao_solicitada` | Cliente envia PDF válido | `respondida` |
-| `respondida` | Funcionário pede correção (motivo curto) e avisa o cliente pelo canal de sempre | `correcao_solicitada` |
-| `respondida` | Funcionário aprova | `aprovada` (upload bloqueado; download continua) |
-| qualquer | Funcionário cancela | `cancelada` (token → 404) |
-
-**Uma ficha por cliente (nunca duplica).** A ficha acompanha o RD (importação e botão "Atualizar ficha com o RD") até o cliente devolvê-la; depois disso vale a versão do cliente, e o RD novo aparece abaixo, na página do cliente, só para comparação, com as diferenças destacadas. O banco garante no máximo uma ficha ativa por cliente.
+| `campo_atualizado` | `{ campo, anterior, novo, em }` | atualiza valor, recalcula amarelo, pisca 2 s, adiciona ao histórico |
+| `presenca` | `{ campo \| null, em }` | contorno azul no campo; selo "Cliente online" |
+| `status` | `{ status, em }` | selo de status (ex.: "Concluída pelo cliente") |
 
 ## 9. Segurança e LGPD
 
-A ficha contém **dados pessoais sensíveis** (saúde, CPF, passaporte).
-
-- Token: `crypto.randomBytes(32).toString('base64url')`; salvar só o hash; validade padrão 15 dias; revogável; novo link revoga o anterior.
-- 404 genérico para token inválido, expirado, revogado ou ficha cancelada.
-- Rate limit via `consumir_rate_limit`: 20 req/min por IP (`x-real-ip` da Vercel) nas rotas `/f/*` e `/api/f/*`.
-- Página do token mostra só o primeiro nome; dados sensíveis só dentro do PDF.
-- Upload: URL assinada (validade fixa de 2 h no Supabase), caminho novo e único `fichas-respondidas/<ficha_id>/<timestamp>.pdf`, sem sobrescrita. Na confirmação: caminho pertence à ficha do token, ≤ 5 MB, assinatura `%PDF-`, é o template correto (nomes dos campos), sem JavaScript fora do que o template já tiver; se inválido, apagar o arquivo.
-- Cabeçalhos: `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex` em `/f/*`.
-- Auditoria de todo acesso e de toda ação dos funcionários.
-- Nunca logar conteúdo do CSV nem do PDF.
-- Retenção (cron diário): apagar PDFs respondidos 90 dias após aprovação; apagar uploads não confirmados com mais de 1 dia; limpar `rate_limit` com mais de 1 dia; apagar tokens expirados há mais de 30 dias; anonimizar `ip`/`user_agent` da `auditoria` com mais de 180 dias (prazo a confirmar).
-- Backup criptografado (GitHub Actions) com senha em GitHub Secrets; dump nunca em texto puro.
-- Signup desativado no Supabase Auth (`supabase/config.toml`). Senha dos funcionários: mínimo 8 caracteres, com maiúscula, minúscula, número e caractere especial (`password_requirements = "lower_upper_letters_digits_symbols"`; o Supabase não tem a opção sem número).
+Agora os dados sensíveis (saúde, CPF, passaporte) **aparecem na tela** do link. Portanto:
+- Token forte, só hash no banco, validade padrão 15 dias, revogável, 404 genérico.
+- Rate limit: 60 escritas/min por token e 30 req/min por IP nas rotas `/f/*`.
+- `PATCH /campos` aceita apenas chaves de `ficha-layout.json` e valida cada valor com zod (tipo, opções, tamanho máx. 500 caracteres; 1000 nos multilinha).
+- Após `concluida`, a ficha fica somente leitura para o cliente até a consultora reabrir.
+- `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex` em `/f/*`.
+- Payload do Realtime vai só por canal privado para consultoras autenticadas.
+- Nunca logar valores de campos; auditoria registra só ações e IDs.
+- Retenção: cron apaga histórico de fichas aprovadas há > 180 dias e tokens expirados há > 30 dias.
+- Backup criptografado.
 
 ## 10. Fases e critérios de aceite
 
 ### Fase 0 — Setup (0,5 dia)
-- Criar conta gratuita na Vercel, conta/organização Supabase dedicada e repositório privado **na conta pessoal** do GitHub.
-- Criar 2 projetos Supabase Free (`latforms-dev`, `latforms-prod`) em `sa-east-1`; gerar as chaves publishable e secret em cada um.
-- Next.js 16 + TS + Tailwind + shadcn/ui; Supabase CLI (apenas para migrations: `supabase link` + `supabase db push`, sem Docker).
-- `package.json` com o script `check` (lint + typecheck + testes).
-- `.env.local` apontando para `latforms-dev`: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `APP_URL`, `TOKEN_TTL_DIAS`, `CRON_SECRET`.
-- Logo e fontes da ficha em `assets/` (o modelo de 2024 ficou em `docs/modelo-2024/`); `CLAUDE.md` na raiz; skill em `.claude/skills/ficha-cadastro-latitudes/SKILL.md`; CSV anonimizado em `tests/fixtures/rd-export.csv`.
-- ✅ `npm run dev` sobe conectado ao `latforms-dev`; `npm run check` passa.
+- Contas gratuitas, 2 projetos Supabase, Next.js + TS + Tailwind + shadcn/ui, Supabase CLI (sem Docker).
+- Copiar `ficha-bg.webp`, `ficha-layout.json`, template e SKILL.md para os lugares da seção 5.
+- ✅ `npm run dev` conectado ao `latforms-dev`.
 
-### Fase 1 — Auth e layout (1 dia)
-- Migrations + RLS + bucket; desativar signup; criar 1 funcionário manualmente.
-- Login, logout, `proxy.ts` e `exigirFuncionario()`.
-- ✅ Não logado → `/login`; logado sem registro em `funcionarios` → 403 (inclusive chamando a API direto, sem passar pelo `proxy.ts`); `/api/cron/manutencao` e `/api/f/*` não são redirecionados.
+### Fase 1 — Auth, banco e Realtime (1 dia)
+- Migrations, RLS, funções `atualizar_campo` e `consumir_rate_limit`, política do Realtime, canais privados.
+- ✅ Consultora logada assina `ficha:<id>`; usuário anônimo não consegue assinar.
 
 ### Fase 2 — Parser e mapeamento do CSV (2 dias)
-- `lib/rd/parse-csv.ts`, `lib/ficha/normalizers.ts`, `lib/ficha/mapping.ts` conforme a skill.
-- Testes (Vitest) com o CSV de exemplo.
-- `lib/rd/colunas.ts` (catálogo das 98 colunas) e `lib/rd/extrair.ts`.
-- ✅ As 98 colunas da fixture extraídas com o tipo certo; coluna desconhecida vai para `extras`; 100% das regras da tabela de mapeamento cobertas por teste.
+- Conforme SKILL.md, com testes.
+- ✅ 100% das regras de mapeamento testadas.
 
-### Fase 3 — Importação (1 dia)
-- Navegador lê o CSV (`parse-csv.ts` roda no client) → envia lotes com `dryRun: true` → mostra prévia → reenvia com `dryRun: false`. Normalização e mapeamento rodam no servidor. Nada do CSV é guardado.
-- ✅ Importar o mesmo CSV duas vezes não duplica clientes; CSV com mais de 4,5 MB importa sem erro.
+### Fase 3 — Importação e geração de fichas/links (1 dia)
+- ✅ Reimportar não duplica; ficha nova copia `dados_ficha` em `dados_originais` e `dados_atuais`.
 
-### Fase 4 — Geração do PDF (1,5 dia)
-- Inspecionar o template (JavaScript embutido, opções dos dropdowns, conjunto de caracteres).
-- `lib/ficha/pdf/fill.ts` com `pdf-lib`; geração sob demanda, sem salvar no Storage.
-- ✅ Abre no Adobe Reader e no Chrome com acentos e dropdowns funcionando e editáveis, com os 71 campos; texto com emoji/caracteres fora do WinAnsi não quebra a geração; geração < 1 s.
-- ✅ Testar também o Preview do macOS: se ele corromper o formulário ao salvar, a página do cliente recomenda o Adobe Reader e o erro 422 explica isso.
+### Fase 4 — Componente `<FichaDocumento>` (2 dias) — núcleo visual
+- Renderiza o fundo + campos a partir de `ficha-layout.json`, escala com a largura (fonte proporcional).
+- Props: `modo: 'cliente' | 'consultora'`, `valores`, `originais`, `campoEmFoco`, `onChange`, `onFocus`.
+- `<FichaLista>` para celular, agrupado por seção, mesmas props.
+- Máscaras: CPF, CEP, telefone, datas (DD/MM/AAAA).
+- ✅ Em 1280 px os campos ficam exatamente sobre as caixas do modelo; em 390 px aparece o modo lista; acessível por teclado (Tab segue a ordem da ficha).
 
-### Fase 5 — Link com token e página do cliente (1,5 dia) — ✅ concluída em 25/09/2026
-- Token, revogação, "copiar link" e "copiar mensagem" (texto pronto para a equipe colar no canal que usar).
-- `/f/[token]`: instruções, download, upload direto ao Storage, confirmação, aviso de correção quando houver.
-- ✅ Token expirado/revogado/ficha cancelada → 404; abrir a página não muda o status, baixar o PDF muda para `aberta`; E2E do fluxo completo.
+### Fase 5 — Link do cliente com autosave (1,5 dia)
+- `/f/[token]`: saudação, instruções curtas, ficha, indicador "Salvando… / Salvo ✓ / Sem conexão — tentaremos de novo", botão "Concluir ficha".
+- Fila de salvamento no cliente: debounce 800 ms, envio ao sair do campo, retry com backoff se offline, aviso ao fechar a aba com pendências.
+- Presença: `POST /presenca` ao focar/desfocar (throttle 1 s) e heartbeat a cada 30 s com a aba visível.
+- ✅ Editar um campo, recarregar a página e o valor continua lá.
 
-### Fase 6 — Recebimento e revisão (1,5 dia)
-- `lib/ficha/pdf/read.ts`; tela de revisão com diff; aprovar / pedir correção / cancelar; exportar CSV.
-- ✅ PDF preenchido no Adobe Reader e reenviado é lido por completo (fixture real salva pelo Reader em `tests/fixtures/`).
+### Fase 6 — Painel ao vivo da consultora (2 dias)
+- `/admin/fichas/[id]` com `<FichaDocumento modo="consultora">` somente leitura.
+- Assinatura do canal; ao reconectar ou voltar à aba, recarrega o estado do banco (nada se perde se uma mensagem falhar).
+- Amarelo = `valorAtual ≠ valorOriginal`; tooltip "Antes: … · Alterado às 14:32"; contorno azul + etiqueta "Cliente editando" no campo em foco; selo "Cliente online" (sinal < 60 s); piscar 2 s em mudanças novas; painel "Atividade"; filtro "só alterados"; legenda das cores.
+- `/admin` atualiza status e contadores em tempo real.
+- ✅ Com duas janelas (cliente e consultora), a alteração aparece em amarelo na consultora em menos de 2 s; o foco do cliente aparece em azul.
 
-**Deploy de teste (25/09/2026):** https://latforms.vercel.app — Vercel Hobby da conta pessoal (`contieri/latforms`), repositório GitHub conectado (cada push em `main` publica sozinho), funções em `gru1`, usando o Supabase de desenvolvimento (projeto LatForms). Variáveis de produção enviadas com `vercel env add` (secret key e CRON_SECRET como sensíveis) e `APP_URL=https://latforms.vercel.app`. E2E de cliente e de equipe passaram contra o site publicado.
+### Fase 7 — Conclusão, PDF final e exportação (1 dia)
+- Concluir (cliente), aprovar/reabrir (consultora), PDF final com `pdf-lib` a partir de `dados_atuais`, exportação CSV.
+- ✅ PDF final abre corretamente com todos os valores e acentos.
 
-### Fase 7 — Operação gratuita e deploy (1 dia)
-- `vercel.json` com `regions` e `crons` (`/api/cron/manutencao`, 1x/dia).
-- `.github/workflows/backup.yml`: `pg_dump` diário do `latforms-prod` (cliente Postgres na **mesma versão major** do servidor, instalado pelo repositório PGDG) → `gpg --symmetric` → `actions/upload-artifact` (retenção 30 dias).
-- Deploy na Vercel Hobby apontando para `latforms-prod`.
-- README: como restaurar o backup, como reativar o Supabase se pausar, e o aviso de que os PDFs do Storage não têm backup.
-- ✅ Cron executa e registra em `auditoria`; backup do dia aparece nos artefatos do GitHub; teste de restauração feito uma vez no `latforms-dev`.
+### Fase 8 — Operação gratuita e deploy (1 dia)
+- `vercel.json` (regions + cron), `backup.yml`, `ci.yml`, deploy, README (restaurar backup, reativar Supabase).
+- ✅ Cron e backup funcionando; E2E completo (Playwright com 2 contextos: cliente e consultora).
 
-**Estimativa total:** ~10 dias úteis.
+**Estimativa total:** ~12 dias úteis.
 
 ## 11. Estrutura de pastas
 
 ```
 .
-├── CLAUDE.md
-├── .claude/skills/ficha-cadastro-latitudes/{SKILL.md,colunas-rd.md}
+├── .claude/skills/ficha-cadastro-latitudes/SKILL.md
 ├── .github/workflows/{ci.yml,backup.yml}
-├── assets/{fonts,templates}/          # Open Sans (OFL) e logo usados no PDF
-├── docs/modelo-2024/                  # modelo Scribus antigo (referência)
+├── assets/templates/ficha-cadastro-2024.pdf
+├── public/ficha/ficha-bg.webp
 ├── vercel.json
 ├── src/
 │   ├── app/
 │   │   ├── login/page.tsx
-│   │   ├── admin/{layout.tsx,page.tsx,importar/page.tsx,clientes/[id]/page.tsx}
+│   │   ├── admin/{page.tsx,importar/page.tsx,fichas/[id]/page.tsx}
 │   │   ├── f/[token]/page.tsx
 │   │   └── api/
 │   │       ├── importacoes/route.ts
-│   │       ├── importacoes/{previa,[id]/lote}/route.ts
 │   │       ├── fichas/route.ts
-│   │       ├── fichas/[id]/{link,pdf,status}/route.ts
-│   │       ├── fichas/lote/route.ts
+│   │       ├── fichas/[id]/{link,aprovar,reabrir,pdf}/route.ts
 │   │       ├── exportar/route.ts
-│   │       ├── f/[token]/{pdf,upload-url,confirmar}/route.ts
+│   │       ├── f/[token]/{campos,presenca,concluir,pdf}/route.ts
 │   │       └── cron/manutencao/route.ts
+│   ├── components/ficha/{FichaDocumento,FichaLista,CampoFicha,PainelAtividade,LegendaCores}.tsx
+│   ├── hooks/{useAutosave,usePresenca,useFichaAoVivo}.ts
 │   ├── lib/
 │   │   ├── supabase/{server,client,admin}.ts
-│   │   ├── auth.ts                 # exigirFuncionario()
-│   │   ├── rd/{parse-csv,colunas,extrair}.ts
-│   │   ├── ficha/{schema,mapping,normalizers,status}.ts
-│   │   ├── ficha/campos.ts             # os 71 campos da ficha (fonte única)
-│   │   ├── ficha/pdf/{gerar,read,recursos,winansi}.ts
-│   │   ├── tokens.ts
-│   │   ├── rate-limit.ts
-│   │   └── audit.ts
-│   └── proxy.ts
+│   │   ├── realtime/broadcast.ts
+│   │   ├── rd/parse-csv.ts
+│   │   ├── ficha/{ficha-layout.json,layout.ts,schema,mapping,normalizers,diff}.ts
+│   │   ├── ficha/pdf/fill.ts
+│   │   ├── tokens.ts, rate-limit.ts, audit.ts
+│   └── middleware.ts
 ├── supabase/migrations/
 └── tests/{unit,e2e,fixtures}/
 ```
 
-## 12. Pontos para confirmar com a equipe
+## 12. Pontos para confirmar com o responsável
 
-1. **Uso da Vercel Hobby para um sistema da empresa** e repositório em conta pessoal (ver seção 3).
-2. Validade do link (sugestão: 15 dias).
-3. Campos obrigatórios para considerar a ficha "completa".
-4. Se o PDF deve incluir o nome da viagem/programa.
-5. Prazo de retenção dos dados após a viagem e dos IPs da auditoria (LGPD).
+1. **Verificação extra no link:** como os dados de saúde agora aparecem na tela, vale pedir a data de nascimento do cliente antes de abrir a ficha? (Recomendado; custo zero e ~0,5 dia.)
+2. A consultora também poderá editar a ficha pelo painel? (O modelo já suporta `origem = 'consultora'`.)
+3. Um campo alterado e depois revertido ao valor original deve continuar amarelo? (Proposta: não; o histórico registra a ida e a volta.)
+4. Campos obrigatórios para liberar "Concluir ficha".
+5. Uso da Vercel Hobby vs. time Pro da empresa.
+6. Validade do link e retenção dos dados (LGPD).
 
 ## 13. Evoluções futuras
-- Envio automático dos links (convite de equipe e, depois, link do cliente) pelo Microsoft 365 da Latitudes via Microsoft Graph (OAuth, app registrado no Entra com permissão só de envio e restrito a uma caixa como `nao-responda@latitudes.com.br`). Custo zero; depende da TI. Não usar SMTP com usuário/senha: a Microsoft desativa por padrão no fim de 2026. Hoje: botão "Enviar pelo Outlook" abre o Outlook na web de quem envia com a mensagem pronta.
 - Integração com a API do RD Station.
-- Ficha web como alternativa ao PDF.
-- Múltiplos modelos de ficha por tipo de viagem.
+- Envio do link por e-mail/WhatsApp direto do painel.
+- Notificação para a consultora quando o cliente concluir.
+- Múltiplos modelos de ficha (o `ficha-layout.json` já isola o template).

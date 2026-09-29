@@ -4,7 +4,6 @@ import { gerarFicha, nomeArquivoFicha } from '@/lib/ficha/pdf/gerar';
 import { carregarRecursos } from '@/lib/ficha/pdf/recursos';
 import { DadosFichaSchema } from '@/lib/ficha/schema';
 import { falha } from '@/lib/http';
-import { criarClienteAdmin } from '@/lib/supabase/admin';
 import { criarClienteServidor } from '@/lib/supabase/server';
 
 function respostaPdf(pdf: Uint8Array, nomeArquivo: string): Response {
@@ -17,37 +16,23 @@ function respostaPdf(pdf: Uint8Array, nomeArquivo: string): Response {
   });
 }
 
-/**
- * PDF de uma ficha para o funcionário.
- * `tipo=gerado` (padrão): gerado na hora a partir de `dados_snapshot` — nada é salvo.
- * `tipo=respondido`: o arquivo devolvido pelo cliente, do Storage.
- */
-export async function GET(req: Request, ctx: RouteContext<'/api/fichas/[id]/pdf'>) {
+/** PDF da ficha para a equipe, gerado na hora (nada é salvo). */
+export async function GET(_req: Request, ctx: RouteContext<'/api/fichas/[id]/pdf'>) {
   const funcionario = await exigirFuncionario();
   if (funcionario instanceof Response) return funcionario;
 
   const { id } = await ctx.params;
-  const tipo = new URL(req.url).searchParams.get('tipo') ?? 'gerado';
-  if (tipo !== 'gerado' && tipo !== 'respondido') return falha('tipo inválido', 400);
 
   const supabase = await criarClienteServidor();
   const { data: ficha } = await supabase
     .from('fichas')
-    .select('id, dados_snapshot, pdf_respondido_path, clientes(nome)')
+    .select('id, dados_snapshot, clientes(nome)')
     .eq('id', id)
     .maybeSingle();
   if (!ficha) return falha('Ficha não encontrada', 404);
 
   const ator = `funcionario:${funcionario.id}`;
   const nome = ficha.clientes?.nome ?? null;
-
-  if (tipo === 'respondido') {
-    if (!ficha.pdf_respondido_path) return falha('O cliente ainda não devolveu esta ficha', 404);
-    const { data, error } = await criarClienteAdmin().storage.from('fichas-respondidas').download(ficha.pdf_respondido_path);
-    if (error || !data) return falha('Arquivo não encontrado no Storage', 404);
-    await registrarAuditoria({ ator, acao: 'pdf_respondido_baixado', fichaId: ficha.id });
-    return respostaPdf(new Uint8Array(await data.arrayBuffer()), nomeArquivoFicha(nome).replace('.pdf', '_respondida.pdf'));
-  }
 
   const dados = DadosFichaSchema.safeParse(ficha.dados_snapshot);
   if (!dados.success) return falha('Esta ficha foi criada no modelo antigo. Gere uma nova versão para baixar o PDF.', 422);

@@ -51,7 +51,7 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
   const { data: cliente } = await supabase
     .from('clientes')
     .select(
-      'id, nome, email, rd_id, dados_rd, criado_em, atualizado_em, fichas(id, versao, status, criado_em, snapshot_atualizado_em, dados_snapshot, dados_respondidos, pdf_respondido_path, respondida_em, tokens_acesso(expira_em, revogado_em, usos, ultimo_acesso_em))',
+      'id, nome, email, rd_id, dados_rd, criado_em, atualizado_em, fichas(id, versao, status, criado_em, snapshot_atualizado_em, dados_snapshot, dados_respondidos, respondida_em, tokens_acesso(expira_em, revogado_em, usos, ultimo_acesso_em))',
     )
     .eq('id', id)
     .order('criado_em', { referencedTable: 'fichas', ascending: false })
@@ -108,11 +108,6 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
               <a href={`/api/fichas/${ficha.id}/pdf?tipo=gerado`} className="font-bold text-laranja underline underline-offset-4">
                 Baixar PDF {devolvida ? '(como foi enviado ao cliente)' : ''}
               </a>
-              {ficha.pdf_respondido_path && (
-                <a href={`/api/fichas/${ficha.id}/pdf?tipo=respondido`} className="font-bold text-laranja underline underline-offset-4">
-                  Baixar PDF devolvido pelo cliente
-                </a>
-              )}
             </div>
             {ficha.respondida_em && (
               <p>
