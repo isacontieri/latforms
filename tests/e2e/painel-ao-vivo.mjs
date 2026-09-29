@@ -145,6 +145,24 @@ try {
   const { data: rev } = await admin.from('fichas').select('dados_revisados, revisado_em').eq('id', fichaId).single();
   ok(rev.revisado_em && rev.dados_revisados.convenioMedico === 'Unimed Nacional', 'foto da revisão salva no banco');
 
+  console.log('Página do cliente conversa com a ficha ao vivo:');
+  const pc = await ctxF.newPage();
+  const { data: cliF } = await admin.from('fichas').select('cliente_id').eq('id', fichaId).single();
+  await pc.goto(`${APP}/admin/clientes/${cliF.cliente_id}`);
+  await pc.waitForSelector('[data-chave="nome"]', { state: 'attached' });
+  const alteradosNoCliente = () => pc.locator('dd[data-alterado]').evaluateAll((els) => els.map((e) => e.getAttribute('data-chave')).sort());
+  let noCliente = await alteradosNoCliente();
+  ok(JSON.stringify(noCliente) === '["complemento","convenioMedico"]', `página do cliente: mesmos amarelos do painel (${noCliente.join(', ')})`);
+  const fundoCli = await pc.locator('dd[data-chave="convenioMedico"]').evaluate((e) => getComputedStyle(e).backgroundColor);
+  ok(fundoCli === 'rgb(255, 229, 143)', `mesmo amarelo #ffe58f (${fundoCli})`);
+  await f.getByRole('button', { name: /^Marcar como revisado/ }).click();
+  const zerou = await pc.waitForFunction(() => document.querySelectorAll('dd[data-alterado]').length === 0, null, { timeout: 8000 }).then(() => true).catch(() => false);
+  ok(zerou, 'marcar como revisado no painel → página do cliente volta ao cinza sozinha');
+  await c.locator('[data-campo="convenioMedico"]').fill('Amil');
+  const voltou = await pc.waitForFunction(() => document.querySelector('dd[data-chave="convenioMedico"]')?.hasAttribute('data-alterado'), null, { timeout: 8000 }).then(() => true).catch(() => false);
+  ok(voltou, 'cliente altera de novo → amarelo na página do cliente, sem recarregar');
+  await pc.close();
+
   console.log('Fase 6 — concluir, reabrir, aprovar:');
   await c.waitForTimeout(1200);
   await c.getByRole('button', { name: 'Concluir ficha' }).click();

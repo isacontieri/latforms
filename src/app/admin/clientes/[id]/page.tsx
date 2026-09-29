@@ -12,6 +12,7 @@ import { jsonIgual } from '@/lib/importacao/lote';
 import { COLUNAS_RD, type ChaveRd, type ColunaRd, type Grupo, type ValorCampo } from '@/lib/rd/colunas';
 import type { DadosRd } from '@/lib/rd/extrair';
 import { criarClienteServidor } from '@/lib/supabase/server';
+import { AtualizarAoVivo } from './AtualizarAoVivo';
 import { BotaoGerarFicha } from './BotaoGerarFicha';
 import { DadosDaFicha } from './DadosDaFicha';
 import { LinkDoCliente, type LinkAtivo } from './LinkDoCliente';
@@ -54,7 +55,7 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
   const { data: cliente } = await supabase
     .from('clientes')
     .select(
-      'id, nome, email, rd_id, dados_rd, criado_em, atualizado_em, fichas(id, status, criado_em, atualizado_em, concluida_em, dados_originais, dados_atuais, tokens_acesso(expira_em, revogado_em, usos, ultimo_acesso_em))',
+      'id, nome, email, rd_id, dados_rd, criado_em, atualizado_em, fichas(id, status, criado_em, atualizado_em, concluida_em, dados_originais, dados_atuais, dados_revisados, revisado_em, tokens_acesso(expira_em, revogado_em, usos, ultimo_acesso_em))',
     )
     .eq('id', id)
     .order('criado_em', { referencedTable: 'fichas', ascending: false })
@@ -85,6 +86,7 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
       titulo={cliente.nome}
       descricao={`${cliente.email ?? 'sem e-mail'} · ID RD ${cliente.rd_id} · atualizado em ${formatarData.format(new Date(cliente.atualizado_em))}`}
     >
+      {ficha && <AtualizarAoVivo fichaId={ficha.id} />}
       {/* A ficha (uma por cliente) */}
       <Cartao
         titulo="Ficha"
@@ -150,8 +152,14 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
           <Cartao titulo="Ficha agora">
             <DadosDaFicha
               dados={dadosAtuais.data}
-              compararCom={DadosFichaSchema.safeParse(ficha.dados_originais).data ?? null}
-              rotuloComparacao="alterado(s) pelo cliente em relação ao que veio do RD (destacados em laranja)."
+              compararCom={DadosFichaSchema.safeParse(ficha.dados_revisados ?? ficha.dados_originais).data ?? null}
+              estilo="alterado"
+              rotuloAnterior={ficha.revisado_em ? 'Na revisão' : 'Antes'}
+              rotuloComparacao={
+                ficha.revisado_em
+                  ? `alterado(s) pelo cliente desde a revisão de ${formatarData.format(new Date(ficha.revisado_em))} (em amarelo).`
+                  : 'alterado(s) pelo cliente em relação ao que veio do RD (em amarelo). Marque como revisado na ficha ao vivo.'
+              }
             />
           </Cartao>
           {rdMudouDepois && (
