@@ -55,7 +55,7 @@ export function LinkDoCliente({
 
   return (
     <div className="flex flex-col gap-2 border-t border-campo pt-3">
-      <span className="font-bold">Link para o cliente</span>
+      <h2 className="text-xs font-bold tracking-wide text-texto/60 uppercase">Link do cliente</h2>
       {ativo ? (
         <p>
           Ativo até {formatar(ativo.expiraEm)} ·{' '}
@@ -71,7 +71,9 @@ export function LinkDoCliente({
             type="button"
             onClick={() => chamar('POST')}
             disabled={pendente}
-            className="h-9 rounded-sm bg-laranja px-3 text-sm font-bold text-white hover:bg-laranja-escuro disabled:opacity-60"
+            className={`h-9 rounded-sm px-3 text-sm font-bold disabled:opacity-60 ${
+              ativo ? 'bg-campo hover:bg-campo/70' : 'bg-laranja text-white hover:bg-laranja-escuro'
+            }`}
           >
             {pendente ? 'Gerando…' : ativo ? 'Gerar novo link' : 'Gerar link para o cliente'}
           </button>
@@ -94,7 +96,7 @@ export function LinkDoCliente({
         </div>
       )}
       {ativo && podeGerar && !gerado && (
-        <p className="text-xs text-texto/60">O link só aparece na hora em que é gerado. Para enviar de novo, gere um novo (o anterior deixa de funcionar).</p>
+        <p className="text-xs text-texto/60">Para reenviar, gere um novo link (o anterior para de funcionar).</p>
       )}
       {erro && <p role="alert" className="text-red-700">{erro}</p>}
       {gerado && mensagem && (

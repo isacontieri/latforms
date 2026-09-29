@@ -42,7 +42,7 @@ export default async function PaginaFichaAoVivo({ params }: PageProps<'/admin/fi
       </div>
       <FichaAoVivo
         inicial={estado}
-        extras={
+        rodape={
           <LinkDoCliente
             key="link"
             fichaId={estado.id}

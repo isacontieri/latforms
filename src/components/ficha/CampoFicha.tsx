@@ -13,7 +13,6 @@ export interface EstadoCampo {
   /** Salvo agora há pouco (✓ discreto, só para o cliente). */
   salvo?: boolean;
   /** Esmaecido pelo filtro "só alterados". */
-  esmaecido?: boolean;
   erro?: string | null;
   /** Texto do tooltip (ex.: "Antes: … · Alterado às 14:32"). */
   dica?: string;
@@ -44,7 +43,6 @@ export function CampoFicha({
     estado.alterado && 'ficha-alterado',
     estado.editando && 'ficha-editando',
     estado.recente && 'ficha-recente',
-    estado.esmaecido && 'ficha-esmaecido',
     estado.erro && 'ficha-erro',
   ]
     .filter(Boolean)

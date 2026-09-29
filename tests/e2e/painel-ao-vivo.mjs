@@ -70,7 +70,9 @@ try {
   console.log('Fase 6 — painel da ficha:');
   await f.goto(`${APP}/admin/fichas/${fichaId}`);
   await f.locator('[data-campo="convenioMedico"]').first().waitFor({ timeout: 60000 });
-  ok(await aparece(f.getByText('Ao vivo — atualiza sozinho')), 'painel conectado ao canal privado');
+  await f.waitForTimeout(2500);
+  ok(!(await f.getByText(/Conectando|Reconectando/).isVisible()), 'painel conectado ao canal privado');
+  ok((await f.getByRole('button', { name: /Aprovar|Reabrir|Cancelar/ }).count()) === 0 && (await f.getByRole('link', { name: 'Baixar PDF' }).isVisible()), 'painel só com "Baixar PDF" como ação');
   ok(await f.locator('[data-campo="nome"]').isDisabled(), 'consultora só visualiza (campos desabilitados)');
 
   // foco → azul
@@ -93,7 +95,7 @@ try {
   await f.waitForTimeout(2300); // fim do destaque de 2 s
   const fundo = await f.locator('[data-campo="convenioMedico"]').evaluate((e) => getComputedStyle(e).backgroundColor);
   ok(fundo === 'rgb(255, 229, 143)', `fundo amarelo #ffe58f (${fundo})`);
-  ok((await f.getByTestId('n-alterados').textContent()) === '1', 'contador: 1 alterado');
+  ok(await aparece(f.getByRole('button', { name: 'Só alterados (1)' })), 'contador: "Só alterados (1)"');
   ok(await aparece(f.getByTestId('historico').getByText('Unimed Nacional')), 'histórico mostra a alteração');
   ok((await f.locator('[data-campo="convenioMedico"]').getAttribute('title'))?.startsWith('Antes:'), 'dica "Antes: …" no campo alterado');
 
@@ -109,9 +111,12 @@ try {
   const nHist = await f.getByTestId('historico').locator('li').count();
   ok(semAmarelo && nHist === 3, `revertido ao original: sem amarelo, histórico com ${nHist} entradas (esperado 3)`);
 
-  await f.getByLabel('Mostrar só alterados').check();
-  ok(await f.locator('[data-campo="nome"]').evaluate((e) => e.classList.contains('ficha-esmaecido')), '"Mostrar só alterados" esmaece os demais');
-  await f.getByLabel('Mostrar só alterados').uncheck();
+  await f.getByRole('button', { name: /^Só alterados/ }).click();
+  const itens = await f.getByTestId('lista-alterados').locator('[data-alterado]').evaluateAll((els) => els.map((e) => e.getAttribute('data-alterado')));
+  ok(JSON.stringify(itens) === '["convenioMedico"]' && (await f.locator('[data-campo]').count()) === 0, `"Só alterados" mostra só o que mudou (${itens.join(', ')})`);
+  ok(await aparece(f.getByTestId('lista-alterados').getByText('Unimed Nacional')), 'lista mostra o valor novo');
+  await f.getByRole('button', { name: 'Ver na ficha' }).click();
+  ok(await aparece(f.locator('[data-campo="convenioMedico"]')), '"Ver na ficha" volta à ficha completa');
 
   await c.locator('[data-campo="nome"]').click();
   await f.waitForFunction(() => document.querySelector('[data-campo="nome"]')?.classList.contains('ficha-editando'), null, { timeout: 5000 }).catch(() => {});
@@ -126,17 +131,15 @@ try {
   await c.getByRole('button', { name: 'Concluir ficha' }).click();
   ok(await aparece(c.getByText('Ficha enviada, obrigado!')), 'cliente conclui');
   ok(await statusNoPainel('concluida'), 'painel mostra "Concluída" sem recarregar');
-  ok(await aparece(f.getByRole('button', { name: 'Aprovar ficha' })), 'botão "Aprovar ficha" aparece');
 
-  await f.getByRole('button', { name: 'Reabrir para o cliente' }).click();
-  await f.getByRole('button', { name: 'Sim' }).click();
+  ok((await f.request.post(`${APP}/api/fichas/${fichaId}/reabrir`)).status() === 200, 'reabrir pela API');
   ok(await statusNoPainel('em_preenchimento'), 'reabrir → "em preenchimento"');
   await c.reload(); await c.waitForFunction(() => document.querySelectorAll('[data-campo="nome"]').length === 1, null, { timeout: 60000 });
   ok(!(await c.locator('[data-campo="nome"]').isDisabled()), 'cliente volta a editar pelo mesmo link');
   await c.getByRole('button', { name: 'Concluir ficha' }).click();
   await aparece(c.getByText('Ficha enviada, obrigado!'));
   await statusNoPainel('concluida');
-  await f.getByRole('button', { name: 'Aprovar ficha' }).click();
+  await f.request.post(`${APP}/api/fichas/${fichaId}/aprovar`);
   ok(await statusNoPainel('aprovada'), 'aprovar → "aprovada"');
   const pdf = await f.request.get(`${APP}/api/fichas/${fichaId}/pdf`);
   ok(pdf.status() === 200 && (await pdf.body()).subarray(0, 4).toString() === '%PDF', 'PDF final baixa');
