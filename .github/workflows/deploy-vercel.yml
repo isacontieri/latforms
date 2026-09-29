@@ -1,0 +1,41 @@
+name: Deploy Vercel (Latitudes)
+
+# A Vercel Hobby só aceita deploy automático pelo GitHub quando quem fez o commit é a dona da conta.
+# Por isso o deploy de produção roda aqui, pela CLI, com um token do projeto latitudes/latforms.
+# Roda só no repositório da empresa. Segredo: VERCEL_TOKEN. Variáveis: VERCEL_ORG_ID, VERCEL_PROJECT_ID.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-vercel-producao
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.repository == 'LatitudesViagens/LatForms'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - name: Baixar configuração e variáveis de produção
+        run: npx --yes vercel@56 pull --yes --environment=production --token="$VERCEL_TOKEN"
+      - name: Build
+        run: npx --yes vercel@56 build --prod --token="$VERCEL_TOKEN"
+      - name: Deploy de produção
+        run: npx --yes vercel@56 deploy --prebuilt --prod --token="$VERCEL_TOKEN"
