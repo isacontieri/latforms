@@ -22,6 +22,7 @@ export function LinkDoCliente({
   remetente,
   ativo,
   podeGerar,
+  reabre = false,
 }: {
   fichaId: string;
   nomeCliente: string;
@@ -29,18 +30,20 @@ export function LinkDoCliente({
   remetente: string;
   ativo: LinkAtivo | null;
   podeGerar: boolean;
+  /** ficha concluída/aprovada: gerar um link novo devolve a ficha ao cliente para editar */
+  reabre?: boolean;
 }) {
   const router = useRouter();
   const [pendente, iniciar] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
-  const [gerado, setGerado] = useState<{ url: string; expiraEm: string } | null>(null);
+  const [gerado, setGerado] = useState<{ url: string; expiraEm: string; reaberta?: boolean } | null>(null);
   const [confirmarRevogar, setConfirmarRevogar] = useState(false);
 
   const chamar = (metodo: 'POST' | 'DELETE') =>
     iniciar(async () => {
       setErro(null);
       const r = await fetch(`/api/fichas/${fichaId}/link`, { method: metodo });
-      const json = (await r.json().catch(() => null)) as { ok: boolean; data?: { url: string; expiraEm: string }; erro?: string } | null;
+      const json = (await r.json().catch(() => null)) as { ok: boolean; data?: { url: string; expiraEm: string; reaberta?: boolean }; erro?: string } | null;
       if (!r.ok || !json?.ok) {
         setErro(json?.erro ?? `Erro ${r.status}`);
         return;
@@ -75,7 +78,7 @@ export function LinkDoCliente({
               ativo ? 'bg-campo hover:bg-campo/70' : 'bg-laranja text-white hover:bg-laranja-escuro'
             }`}
           >
-            {pendente ? 'Gerando…' : ativo ? 'Gerar novo link' : 'Gerar link para o cliente'}
+            {pendente ? 'Gerando…' : reabre ? 'Gerar novo link e reabrir' : ativo ? 'Gerar novo link' : 'Gerar link para o cliente'}
           </button>
           {ativo &&
             (confirmarRevogar ? (
@@ -95,7 +98,18 @@ export function LinkDoCliente({
             ))}
         </div>
       )}
-      {ativo && podeGerar && !gerado && (
+      {reabre && podeGerar && !gerado && (
+        <p className="text-xs text-texto/70">
+          A ficha está concluída e o cliente não consegue mais editar. Gerar um novo link <strong>reabre a ficha</strong> para ele
+          alterar pelo link novo.
+        </p>
+      )}
+      {gerado?.reaberta && (
+        <p className="rounded-sm border border-green-700/30 bg-green-50 p-2 text-xs text-green-800" role="status">
+          Ficha reaberta: o cliente já pode editar pelo link novo.
+        </p>
+      )}
+      {ativo && podeGerar && !gerado && !reabre && (
         <p className="text-xs text-texto/60">Para reenviar, gere um novo link (o anterior para de funcionar).</p>
       )}
       {erro && <p role="alert" className="text-red-700">{erro}</p>}

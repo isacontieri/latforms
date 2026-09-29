@@ -9,6 +9,8 @@ import { useFichaAoVivo } from '@/hooks/useFichaAoVivo';
 import { igual } from '@/lib/ficha/diff';
 import { referenciaDe, type EstadoFicha } from '@/lib/ficha/estado';
 import { CAMPOS_LAYOUT } from '@/lib/ficha/layout';
+import { proximoStatus, reabreAoGerarLink } from '@/lib/ficha/status';
+import { LinkDoCliente, type LinkAtivo } from '../../clientes/[id]/LinkDoCliente';
 
 const hora = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
 const diaHora = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
@@ -21,7 +23,14 @@ type Visao = 'completa' | 'alterados';
  * tira o amarelo). Contorno azul = campo em que o cliente está agora (se online).
  * "Só alterados" troca a ficha por uma lista com o antes e o depois de cada campo alterado.
  */
-export function FichaAoVivo({ inicial, rodape }: { inicial: EstadoFicha; rodape?: React.ReactNode }) {
+export interface DadosLink {
+  nomeCliente: string;
+  emailCliente: string | null;
+  remetente: string;
+  ativo: LinkAtivo | null;
+}
+
+export function FichaAoVivo({ inicial, link }: { inicial: EstadoFicha; link: DadosLink }) {
   const { estado, recentes, conexao, online, agora, piscar, recarregar } = useFichaAoVivo(inicial);
   const [revisando, iniciarRevisao] = useTransition();
   const [erroRevisao, setErroRevisao] = useState<string | null>(null);
@@ -76,7 +85,15 @@ export function FichaAoVivo({ inicial, rodape }: { inicial: EstadoFicha; rodape?
       conexao={conexao}
       edicoes={estado.edicoes}
       onIrParaCampo={irPara}
-      rodape={rodape}
+      rodape={
+        // acompanha o status ao vivo: se o cliente concluir agora, o botão já avisa que o link novo reabre a ficha
+        <LinkDoCliente
+          fichaId={estado.id}
+          {...link}
+          podeGerar={proximoStatus(estado.status, 'gerar_link') !== null}
+          reabre={reabreAoGerarLink(estado.status)}
+        />
+      }
     >
       <a
         href={`/api/fichas/${estado.id}/pdf`}

@@ -151,10 +151,18 @@ try {
   ok(await aparece(c.getByText('Ficha enviada, obrigado!')), 'cliente conclui');
   ok(await statusNoPainel('concluida'), 'painel mostra "Concluída" sem recarregar');
 
-  ok((await f.request.post(`${APP}/api/fichas/${fichaId}/reabrir`)).status() === 200, 'reabrir pela API');
-  ok(await statusNoPainel('em_preenchimento'), 'reabrir → "em preenchimento"');
   await c.reload(); await c.waitForFunction(() => document.querySelectorAll('[data-campo="nome"]').length === 1, null, { timeout: 60000 });
-  ok(!(await c.locator('[data-campo="nome"]').isDisabled()), 'cliente volta a editar pelo mesmo link');
+  ok(await c.locator('[data-campo="nome"]').isDisabled(), 'ficha concluída: cliente não edita mais');
+  ok(await aparece(f.getByRole('button', { name: 'Gerar novo link e reabrir' })), 'painel (ao vivo) oferece "Gerar novo link e reabrir"');
+  await f.getByRole('button', { name: 'Gerar novo link e reabrir' }).click();
+  ok(await aparece(f.getByText('Ficha reaberta: o cliente já pode editar pelo link novo.')), 'aviso "Ficha reaberta"');
+  ok(await statusNoPainel('em_preenchimento'), 'gerar link novo → "em preenchimento"');
+  const linkNovo = (await f.locator('code').filter({ hasText: '/f/' }).first().textContent()).trim();
+  ok(linkNovo !== link && (await fetch(link)).status === 404, 'link antigo deixa de funcionar');
+  await c.goto(linkNovo); await c.waitForFunction(() => document.querySelectorAll('[data-campo="nome"]').length === 1, null, { timeout: 60000 });
+  ok(!(await c.locator('[data-campo="nome"]').isDisabled()), 'cliente volta a editar pelo link novo');
+  const { data: aud0 } = await admin.from('auditoria').select('acao').eq('ficha_id', fichaId).eq('acao', 'ficha_reaberta_por_novo_link');
+  ok(aud0.length === 1, 'auditoria registra a reabertura');
   await c.getByRole('button', { name: 'Concluir ficha' }).click();
   await aparece(c.getByText('Ficha enviada, obrigado!'));
   await statusNoPainel('concluida');
@@ -162,11 +170,11 @@ try {
   ok(await statusNoPainel('aprovada'), 'aprovar → "aprovada"');
   const pdf = await f.request.get(`${APP}/api/fichas/${fichaId}/pdf`);
   ok(pdf.status() === 200 && (await pdf.body()).subarray(0, 4).toString() === '%PDF', 'PDF final baixa');
-  const pdfCli = await fetch(`${link.replace('/f/', '/api/f/')}/pdf`);
+  const pdfCli = await fetch(`${linkNovo.replace('/f/', '/api/f/')}/pdf`);
   ok(pdfCli.status === 200, `cliente baixa cópia da ficha aprovada (${pdfCli.status})`);
   const { data: aud } = await admin.from('auditoria').select('acao').eq('ficha_id', fichaId);
   const acoes = aud.map((a) => a.acao);
-  ok(['ficha_reaberta', 'ficha_aprovada', 'cliente_concluiu_ficha'].every((a) => acoes.includes(a)), 'auditoria registra concluir, reabrir e aprovar');
+  ok(['ficha_aprovada', 'cliente_concluiu_ficha'].every((a) => acoes.includes(a)), 'auditoria registra concluir e aprovar');
   ok((await f.request.post(`${APP}/api/fichas/${fichaId}/aprovar`)).status() === 409, 'aprovar de novo → 409');
   const anon = await fetch(`${APP}/api/fichas/${fichaId}/cancelar`, { method: 'POST' });
   ok(anon.status === 401 || anon.status === 403, `cancelar sem login → ${anon.status}`);

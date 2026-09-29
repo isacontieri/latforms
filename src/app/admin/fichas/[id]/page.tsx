@@ -3,9 +3,8 @@ import { notFound, redirect } from 'next/navigation';
 import { Pagina } from '@/components/ui/Pagina';
 import { verificarConsultora } from '@/lib/auth';
 import { carregarEstadoFicha } from '@/lib/ficha/estado-servidor';
-import { proximoStatus } from '@/lib/ficha/status';
 import { criarClienteServidor } from '@/lib/supabase/server';
-import { LinkDoCliente, type LinkAtivo } from '../../clientes/[id]/LinkDoCliente';
+import type { LinkAtivo } from '../../clientes/[id]/LinkDoCliente';
 import { FichaAoVivo } from './FichaAoVivo';
 
 export const metadata: Metadata = { title: 'Ficha ao vivo — LatForms' };
@@ -36,17 +35,7 @@ export default async function PaginaFichaAoVivo({ params }: PageProps<'/admin/fi
     <Pagina secao="Clientes" voltar={{ href: `/admin/clientes/${cliente.id}`, rotulo: 'Ficha ao vivo' }} titulo={cliente.nome}>
       <FichaAoVivo
         inicial={estado}
-        rodape={
-          <LinkDoCliente
-            key="link"
-            fichaId={estado.id}
-            nomeCliente={cliente.nome}
-            emailCliente={cliente.email}
-            remetente={auth.consultora.nome}
-            ativo={linkAtivo}
-            podeGerar={proximoStatus(estado.status, 'gerar_link') !== null}
-          />
-        }
+        link={{ nomeCliente: cliente.nome, emailCliente: cliente.email, remetente: auth.consultora.nome, ativo: linkAtivo }}
       />
     </Pagina>
   );

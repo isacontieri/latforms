@@ -7,7 +7,7 @@ import { SeloStatus } from '@/components/ui/SeloStatus';
 import { verificarConsultora } from '@/lib/auth';
 import { mapearParaFicha } from '@/lib/ficha/mapping';
 import { DadosFichaSchema, type DadosFicha } from '@/lib/ficha/schema';
-import { aceitaDadosDoRd, proximoStatus } from '@/lib/ficha/status';
+import { aceitaDadosDoRd, proximoStatus, reabreAoGerarLink } from '@/lib/ficha/status';
 import { jsonIgual } from '@/lib/importacao/lote';
 import { COLUNAS_RD, type ChaveRd, type ColunaRd, type Grupo, type ValorCampo } from '@/lib/rd/colunas';
 import type { DadosRd } from '@/lib/rd/extrair';
@@ -125,6 +125,7 @@ export default async function PaginaCliente({ params }: PageProps<'/admin/client
               remetente={auth.consultora.nome}
               ativo={linkAtivo}
               podeGerar={proximoStatus(ficha.status, 'gerar_link') !== null}
+            reabre={reabreAoGerarLink(ficha.status)}
             />
             {pendenteAtualizar && (
               <p className="text-laranja-escuro">Os dados do RD mudaram desde a última atualização da ficha. Clique em “Atualizar ficha com o RD”.</p>

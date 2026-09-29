@@ -45,3 +45,12 @@ describe('referência do amarelo', () => {
     expect(referenciaDe({ revisados: { a: '2' }, originais: { a: '1' } })).toEqual({ a: '2' });
   });
 });
+
+describe('gerar link novo', () => {
+  it('reabre só fichas concluídas ou aprovadas', async () => {
+    const { reabreAoGerarLink } = await import('@/lib/ficha/status');
+    expect(reabreAoGerarLink('concluida')).toBe(true);
+    expect(reabreAoGerarLink('aprovada')).toBe(true);
+    for (const s of ['gerada', 'enviada', 'aberta', 'em_preenchimento', 'cancelada'] as const) expect(reabreAoGerarLink(s)).toBe(false);
+  });
+});

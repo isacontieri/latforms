@@ -28,6 +28,11 @@ export function editavelPeloCliente(status: StatusFicha): boolean {
 }
 
 /** Próximo status para um evento, ou `null` se a transição não é permitida. A edição de campo fica no SQL. */
+/** Gerar um link novo para uma ficha concluída ou aprovada devolve a ficha ao cliente para editar. */
+export function reabreAoGerarLink(status: StatusFicha): boolean {
+  return proximoStatus(status, 'reabrir') !== null;
+}
+
 export function proximoStatus(atual: StatusFicha, evento: EventoFicha): StatusFicha | null {
   switch (evento) {
     case 'gerar_link':
