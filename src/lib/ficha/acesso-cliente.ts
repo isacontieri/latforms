@@ -6,9 +6,13 @@ import { criarClienteAdmin } from '@/lib/supabase/admin';
 import { hashToken, tokenValido } from '@/lib/tokens';
 import type { StatusFicha } from './status';
 
-/** Limites das rotas do cliente (plano v3 §9): 30 req/min por IP e 60 escritas/min por token. */
+/**
+ * Limites das rotas do cliente (plano v3 §9): 30 req/min por IP para abrir a página, concluir e PDF;
+ * autosave e presença são limitados por link (60/min cada) — com 30/min por IP o autosave travaria quem digita rápido.
+ */
 export const LIMITE_IP = { limite: 30, janelaSeg: 60 };
 export const LIMITE_ESCRITA_TOKEN = { limite: 60, janelaSeg: 60 };
+export const LIMITE_PRESENCA_TOKEN = { limite: 60, janelaSeg: 60 };
 
 export interface AcessoCliente {
   tokenId: string;
@@ -32,6 +36,11 @@ export async function dentroDoLimiteIp(): Promise<boolean> {
 /** Rate limit de escrita por token (autosave). */
 export function dentroDoLimiteEscrita(tokenId: string): Promise<boolean> {
   return consumirRateLimit(`fw:${tokenId}`, LIMITE_ESCRITA_TOKEN.limite, LIMITE_ESCRITA_TOKEN.janelaSeg);
+}
+
+/** Rate limit de presença por token (foco + heartbeat). */
+export function dentroDoLimitePresenca(tokenId: string): Promise<boolean> {
+  return consumirRateLimit(`fp:${tokenId}`, LIMITE_PRESENCA_TOKEN.limite, LIMITE_PRESENCA_TOKEN.janelaSeg);
 }
 
 /**
