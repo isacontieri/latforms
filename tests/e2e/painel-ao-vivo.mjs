@@ -170,6 +170,18 @@ try {
   ok((await f.request.post(`${APP}/api/fichas/${fichaId}/aprovar`)).status() === 409, 'aprovar de novo → 409');
   const anon = await fetch(`${APP}/api/fichas/${fichaId}/cancelar`, { method: 'POST' });
   ok(anon.status === 401 || anon.status === 403, `cancelar sem login → ${anon.status}`);
+  console.log('Seta voltar:');
+  await f.goto(`${APP}/admin/fichas/${fichaId}`);
+  await f.getByRole('link', { name: 'Voltar' }).click();
+  ok(await f.waitForURL(/\/admin\/clientes\/[0-9a-f-]+$/, { timeout: 10000 }).then(() => true).catch(() => false), 'aberta direto: seta leva à página do cliente');
+  await f.goto(`${APP}/admin/clientes`);
+  await f.getByRole('link', { name: 'Antônio Ribeiro Neto' }).click();
+  await f.getByRole('link', { name: 'Acompanhar ficha ao vivo' }).click();
+  await f.waitForURL(/\/admin\/fichas\//);
+  await f.getByRole('link', { name: 'Voltar' }).click();
+  ok(await f.waitForURL(/\/admin\/clientes\/[0-9a-f-]+$/, { timeout: 10000 }).then(() => true).catch(() => false), 'ficha → seta volta para o cliente');
+  await f.getByRole('link', { name: 'Voltar' }).click();
+  ok(await f.waitForURL(`${APP}/admin/clientes`, { timeout: 10000 }).then(() => true).catch(() => false), 'cliente → seta volta para a lista de clientes (página anterior)');
   await f.screenshot({ path: `${S}/f6-painel.png` });
   ok(errosF.length === 0, `sem erros no navegador da consultora (${errosF.slice(0, 3).join(' | ') || 'nenhum'})`);
 } finally {

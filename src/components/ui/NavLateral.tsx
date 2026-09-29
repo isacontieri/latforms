@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect } from 'react';
+import { registrarPaginaNoPainel } from './BotaoVoltar';
 import { Icone, type NomeIcone } from './Icone';
 
 const SECOES: { titulo: string; itens: { href: string; rotulo: string; icone: NomeIcone; exato?: boolean }[] }[] = [
@@ -19,6 +21,7 @@ const SECOES: { titulo: string; itens: { href: string; rotulo: string; icone: No
 /** Navegação da barra lateral; a ficha ao vivo conta como "Clientes". */
 export function NavLateral() {
   const caminho = usePathname();
+  useEffect(() => registrarPaginaNoPainel(caminho), [caminho]);
   const ativo = (href: string, exato?: boolean) =>
     exato ? caminho === href : caminho.startsWith(href) || (href === '/admin/clientes' && caminho.startsWith('/admin/fichas'));
 
