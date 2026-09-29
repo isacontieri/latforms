@@ -2,7 +2,12 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { verificarConsultora } from '@/lib/auth';
+import { camposAlterados } from '@/lib/ficha/diff';
+import { percentualPreenchido } from '@/lib/ficha/layout';
 import { criarClienteServidor } from '@/lib/supabase/server';
+import { FichasAoVivo, type LinhaFicha } from './FichasAoVivo';
+
+type Dados = Record<string, string | null>;
 
 export const metadata: Metadata = { title: 'Clientes — LatForms' };
 
@@ -22,11 +27,29 @@ export default async function PaginaAdmin() {
     .select('id, nome, email, atualizado_em, fichas(count)', { count: 'exact' })
     .order('atualizado_em', { ascending: false })
     .limit(100);
+  const { data: fichas } = await supabase
+    .from('fichas')
+    .select('id, status, dados_atuais, dados_originais, cliente_visto_em, atualizado_em, clientes(nome)')
+    .in('status', ['enviada', 'aberta', 'em_preenchimento', 'concluida'])
+    .order('atualizado_em', { ascending: false })
+    .limit(100);
+  const linhas: LinhaFicha[] = (fichas ?? []).map((f) => ({
+    id: f.id,
+    cliente: f.clientes?.nome ?? '—',
+    status: f.status,
+    percentual: percentualPreenchido(f.dados_atuais as Dados),
+    alterados: camposAlterados(f.dados_atuais as Dados, f.dados_originais as Dados).size,
+    vistoEm: f.cliente_visto_em,
+    atualizadoEm: f.atualizado_em,
+  }));
 
   return (
     <section className="flex flex-col gap-4">
+      <h1 className="text-xl font-bold text-laranja">Fichas em andamento</h1>
+      <FichasAoVivo linhas={linhas} />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold text-laranja">Clientes {count != null && <span className="text-texto/60">({count})</span>}</h1>
+        <h2 className="mt-4 text-xl font-bold text-laranja">Clientes {count != null && <span className="text-texto/60">({count})</span>}</h2>
         <Link href="/admin/importar" className="flex h-10 items-center rounded-sm bg-laranja px-4 text-sm font-bold text-white hover:bg-laranja-escuro">
           Importar CSV
         </Link>
