@@ -6,6 +6,8 @@ Plano de implementação (para desenvolvimento com Claude Code)
 
 Aprovadas pela responsável ao iniciar a v3:
 
+- **Hospedagem (29/09/2026):** o deploy saiu da conta pessoal e foi para a conta Vercel da **Latitudes** (`latitudes/latforms`, plano Hobby), ligada ao repositório **LatitudesViagens/LatForms**. URL de produção: **https://latforms-latitudes.vercel.app**. Mesmo banco (`latforms-dev`), mesmas variáveis e mesmo `vercel.json` (`gru1` + cron diário); `CRON_SECRET` novo. O projeto antigo (`latforms.vercel.app`) segue no ar até a responsável decidir desativá-lo.
+
 1. **Ficha com os 71 campos** (66 do formulário do RD + 5 do modelo de 2024), não os 35 do modelo Scribus. A definição dos campos (rótulo, tipo, origem no RD, seção) fica em `src/lib/ficha/campos.ts`; o **`src/lib/ficha/ficha-layout.json` é gerado** a partir do gerador do PDF (`npm run ficha:layout`) com o mesmo formato descrito aqui (`chave`, `rotulo`, `tipo`, `campoPdf`, `opcoes`, `pos` em % da página) **mais `pagina`**, porque a ficha tem várias páginas A4. Fundos: `public/ficha/pagina-<n>.webp`. Um teste garante que o JSON está em sincronia com o gerador. O modelo de 2024 fica só como referência em `docs/modelo-2024/`; o PDF final é o gerado pelo sistema (`lib/ficha/pdf/gerar.ts`), preenchido com `dados_atuais`.
 2. **Reimportação do RD:** a ficha acompanha o RD (`dados_originais` e `dados_atuais` atualizados) enquanto o cliente **não editou nenhum campo** (status `gerada`, `enviada`, `aberta`). Depois da primeira edição (`em_preenchimento` em diante), a importação atualiza só o cliente; a ficha não é tocada e o painel mostra as diferenças do RD para consulta. Uma ficha ativa por cliente (índice único).
 3. **Next.js 16** com `src/proxy.ts` (não `middleware.ts`); chaves novas do Supabase: `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` e **`SUPABASE_SECRET_KEY`** (a `service_role` legada deixa de existir no fim de 2026).
@@ -92,7 +94,7 @@ RD Station ──CSV──▶ [Consultora logada] Importar CSV ▶ clientes no b
 | **Destaque** | Campo cujo valor atual ≠ valor original (vindo do CSV) fica **amarelo** na tela da consultora. Campo com o cliente dentro agora ganha **contorno azul** "editando agora". Alteração recém-chegada pisca por 2 s |
 | PDF | Gerado sob demanda a partir dos dados atuais, só para download da equipe (e cópia opcional do cliente após concluir) |
 | Ambientes | 2 projetos Supabase Free: `latforms-dev` e `latforms-prod` |
-| Domínio | `latforms.vercel.app` |
+| Domínio | `latforms-latitudes.vercel.app` (conta Vercel da Latitudes); domínios próprios da Latitudes via Azure |
 
 ## 5. Arquivos de apoio já gerados
 
