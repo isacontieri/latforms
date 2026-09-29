@@ -45,7 +45,17 @@ export default async function PaginaAdmin() {
 
   return (
     <section className="flex flex-col gap-4">
-      <h1 className="text-xl font-bold text-laranja">Fichas em andamento</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-bold text-laranja">Fichas em andamento</h1>
+        <div className="flex flex-wrap gap-3 text-sm">
+          <a href="/api/exportar?status=concluida" className="font-bold text-laranja underline underline-offset-4">
+            Exportar concluídas (CSV)
+          </a>
+          <a href="/api/exportar?status=aprovada" className="font-bold text-laranja underline underline-offset-4">
+            Exportar aprovadas (CSV)
+          </a>
+        </div>
+      </div>
       <FichasAoVivo linhas={linhas} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
