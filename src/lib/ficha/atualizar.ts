@@ -22,7 +22,7 @@ export async function atualizarFichaPeloRd(
   const dados = ficha.dados as unknown as Json;
   const { data, error } = await supabase
     .from('fichas')
-    .update({ dados_originais: dados, dados_atuais: dados })
+    .update({ dados_originais: dados, dados_atuais: dados, dados_revisados: null, revisado_em: null, revisado_por: null })
     .eq('id', ficha.fichaId)
     .in('status', SEM_EDICAO_DO_CLIENTE)
     .select('id');

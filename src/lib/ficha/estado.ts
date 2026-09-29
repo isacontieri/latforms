@@ -16,6 +16,9 @@ export interface EstadoFicha {
   status: StatusFicha;
   atuais: Record<string, string | null>;
   originais: Record<string, string | null>;
+  /** Foto dos dados na última revisão da consultora (null = nunca revisada). */
+  revisados: Record<string, string | null> | null;
+  revisadoEm: string | null;
   campoEmFoco: string | null;
   clienteVistoEm: string | null;
   concluidaEm: string | null;
@@ -23,6 +26,14 @@ export interface EstadoFicha {
 }
 
 export const LIMITE_EDICOES = 200;
+
+/**
+ * Base para o amarelo: a foto da última revisão ou, se nunca revisada, o que veio do RD.
+ * Campo amarelo = valor atual diferente da base.
+ */
+export function referenciaDe<T>(f: { revisados: T | null; originais: T }): T {
+  return f.revisados ?? f.originais;
+}
 /** Cliente "online" se o último sinal do navegador tem menos de 60 s. */
 export const ONLINE_MS = 60_000;
 

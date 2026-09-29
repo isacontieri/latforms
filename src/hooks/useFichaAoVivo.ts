@@ -66,6 +66,8 @@ export function useFichaAoVivo(inicial: EstadoFicha) {
           const p = payload as { status: StatusFicha; em: string };
           setEstado((e) => ({ ...e, status: p.status, ...(p.status === 'concluida' ? { concluidaEm: p.em, campoEmFoco: null } : {}) }));
         })
+        // outra consultora marcou como revisado: a foto fica no banco, então recarrega
+        .on('broadcast', { event: 'revisado' }, () => void recarregar())
         .subscribe((s) => {
           if (s === 'SUBSCRIBED') {
             setConexao('ao_vivo');

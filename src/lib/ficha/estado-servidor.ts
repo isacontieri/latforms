@@ -11,7 +11,7 @@ export async function carregarEstadoFicha(supabase: Supabase, fichaId: string): 
   const [{ data: f }, { data: eds }] = await Promise.all([
     supabase
       .from('fichas')
-      .select('id, status, dados_atuais, dados_originais, campo_em_foco, cliente_visto_em, concluida_em')
+      .select('id, status, dados_atuais, dados_originais, dados_revisados, revisado_em, campo_em_foco, cliente_visto_em, concluida_em')
       .eq('id', fichaId)
       .maybeSingle(),
     supabase
@@ -27,6 +27,8 @@ export async function carregarEstadoFicha(supabase: Supabase, fichaId: string): 
     status: f.status,
     atuais: comoRegistro(f.dados_atuais),
     originais: comoRegistro(f.dados_originais),
+    revisados: f.dados_revisados ? comoRegistro(f.dados_revisados) : null,
+    revisadoEm: f.revisado_em,
     campoEmFoco: f.campo_em_foco,
     clienteVistoEm: f.cliente_visto_em,
     concluidaEm: f.concluida_em,

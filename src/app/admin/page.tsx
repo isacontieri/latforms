@@ -29,7 +29,7 @@ export default async function PaginaAdmin() {
     .limit(100);
   const { data: fichas } = await supabase
     .from('fichas')
-    .select('id, status, dados_atuais, dados_originais, cliente_visto_em, atualizado_em, clientes(nome)')
+    .select('id, status, dados_atuais, dados_originais, dados_revisados, cliente_visto_em, atualizado_em, clientes(nome)')
     .in('status', ['enviada', 'aberta', 'em_preenchimento', 'concluida'])
     .order('atualizado_em', { ascending: false })
     .limit(100);
@@ -38,7 +38,7 @@ export default async function PaginaAdmin() {
     cliente: f.clientes?.nome ?? '—',
     status: f.status,
     percentual: percentualPreenchido(f.dados_atuais as Dados),
-    alterados: camposAlterados(f.dados_atuais as Dados, f.dados_originais as Dados).size,
+    alterados: camposAlterados(f.dados_atuais as Dados, (f.dados_revisados ?? f.dados_originais) as Dados).size,
     vistoEm: f.cliente_visto_em,
     atualizadoEm: f.atualizado_em,
   }));

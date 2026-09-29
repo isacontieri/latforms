@@ -1,44 +1,49 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import { Ficha } from '@/components/ficha/Ficha';
 import type { EstadoCampo } from '@/components/ficha/CampoFicha';
 import { LegendaCores } from '@/components/ficha/LegendaCores';
 import { mostrarValor, PainelAtividade } from '@/components/ficha/PainelAtividade';
 import { useFichaAoVivo } from '@/hooks/useFichaAoVivo';
 import { igual } from '@/lib/ficha/diff';
-import type { EstadoFicha } from '@/lib/ficha/estado';
+import { referenciaDe, type EstadoFicha } from '@/lib/ficha/estado';
 import { CAMPOS_LAYOUT } from '@/lib/ficha/layout';
 
 const hora = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+const diaHora = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
 
 type Visao = 'completa' | 'alterados';
 
 /**
- * Ficha ao vivo: mesmo layout do cliente, somente leitura. Amarelo = valor atual ≠ original do RD
- * (revertido ao original não fica amarelo); contorno azul = campo em que o cliente está agora (se online).
+ * Ficha ao vivo: mesmo layout do cliente, somente leitura. Amarelo = valor atual ≠ base, onde a base é a
+ * foto da última revisão da consultora ou, se nunca revisada, o original do RD (voltar ao valor da base
+ * tira o amarelo). Contorno azul = campo em que o cliente está agora (se online).
  * "Só alterados" troca a ficha por uma lista com o antes e o depois de cada campo alterado.
  */
 export function FichaAoVivo({ inicial, rodape }: { inicial: EstadoFicha; rodape?: React.ReactNode }) {
-  const { estado, recentes, conexao, online, agora, piscar } = useFichaAoVivo(inicial);
+  const { estado, recentes, conexao, online, agora, piscar, recarregar } = useFichaAoVivo(inicial);
+  const [revisando, iniciarRevisao] = useTransition();
+  const [erroRevisao, setErroRevisao] = useState<string | null>(null);
   const [visao, setVisao] = useState<Visao>('completa');
   const [aba, setAba] = useState<'ficha' | 'atividade'>('ficha');
 
   const { estados, alterados } = useMemo(() => {
+    const base = referenciaDe(estado);
     const ultimaEdicao = new Map<string, string>();
     for (const e of estado.edicoes) if (!ultimaEdicao.has(e.campo)) ultimaEdicao.set(e.campo, e.em);
     const est: Record<string, EstadoCampo> = {};
     const lista: { chave: string; rotulo: string; antes: string | null; agora: string | null; quando?: string }[] = [];
     for (const { chave, rotulo } of CAMPOS_LAYOUT) {
-      const alterado = !igual(estado.atuais[chave], estado.originais[chave]);
+      const alterado = !igual(estado.atuais[chave], base[chave]);
       const quando = ultimaEdicao.get(chave);
-      const antes = estado.originais[chave] ?? null;
+      const antes = base[chave] ?? null;
       if (alterado) lista.push({ chave, rotulo, antes, agora: estado.atuais[chave] ?? null, quando });
       est[chave] = {
         alterado,
         editando: online && estado.campoEmFoco === chave,
         recente: recentes.has(chave),
-        dica: alterado ? `Antes: ${mostrarValor(antes)}${quando ? ` · Alterado às ${hora.format(new Date(quando))}` : ''}` : undefined,
+        dica: alterado ? `${estado.revisadoEm ? 'Na revisão' : 'Antes'}: ${mostrarValor(antes)}${quando ? ` · Alterado às ${hora.format(new Date(quando))}` : ''}` : undefined,
       };
     }
     return { estados: est, alterados: lista };
@@ -52,6 +57,15 @@ export function FichaAoVivo({ inicial, rodape }: { inicial: EstadoFicha; rodape?
       piscar(campo);
     });
   };
+
+  const marcarRevisado = () =>
+    iniciarRevisao(async () => {
+      setErroRevisao(null);
+      const r = await fetch(`/api/fichas/${estado.id}/revisado`, { method: 'POST' }).catch(() => null);
+      const json = (await r?.json().catch(() => null)) as { ok: boolean; erro?: string } | null;
+      if (!r?.ok || !json?.ok) setErroRevisao(json?.erro ?? 'Não foi possível marcar como revisado. Tente de novo.');
+      await recarregar();
+    });
 
   const painel = (
     <PainelAtividade
@@ -70,6 +84,22 @@ export function FichaAoVivo({ inicial, rodape }: { inicial: EstadoFicha; rodape?
       >
         Baixar PDF
       </a>
+      <div className="flex flex-col gap-1.5">
+        <button
+          type="button"
+          onClick={marcarRevisado}
+          disabled={revisando || alterados.length === 0}
+          className="h-10 rounded-sm border border-laranja px-4 text-sm font-bold text-laranja hover:bg-laranja/10 disabled:border-campo disabled:text-texto/40 disabled:hover:bg-transparent"
+        >
+          {revisando ? 'Marcando…' : alterados.length === 0 ? 'Nada novo para revisar' : `Marcar como revisado (${alterados.length})`}
+        </button>
+        {estado.revisadoEm && <p className="text-xs text-texto/60">Revisado em {diaHora.format(new Date(estado.revisadoEm))}</p>}
+        {erroRevisao && (
+          <p role="alert" className="text-xs text-red-700">
+            {erroRevisao}
+          </p>
+        )}
+      </div>
     </PainelAtividade>
   );
 
@@ -116,7 +146,7 @@ export function FichaAoVivo({ inicial, rodape }: { inicial: EstadoFicha; rodape?
             <Ficha modo="consultora" valores={estado.atuais} estados={estados} somenteLeitura />
           ) : alterados.length === 0 ? (
             <p className="rounded-sm border border-campo p-6 text-center text-sm text-texto/60" data-testid="lista-alterados">
-              O cliente ainda não alterou nenhum campo.
+              {estado.revisadoEm ? 'Nenhuma alteração nova desde a última revisão.' : 'O cliente ainda não alterou nenhum campo.'}
             </p>
           ) : (
             <ul className="flex flex-col divide-y divide-campo rounded-sm border border-campo" data-testid="lista-alterados">
@@ -128,7 +158,7 @@ export function FichaAoVivo({ inicial, rodape }: { inicial: EstadoFicha; rodape?
                   </div>
                   <p className="w-fit rounded-sm bg-alterado px-2 py-1 break-words whitespace-pre-wrap">{mostrarValor(a.agora)}</p>
                   <p className="text-xs break-words text-texto/60">
-                    Antes: <span className="line-through">{mostrarValor(a.antes)}</span>
+                    {estado.revisadoEm ? 'Na revisão' : 'Antes'}: <span className="line-through">{mostrarValor(a.antes)}</span>
                   </p>
                   <button type="button" onClick={() => irPara(a.chave)} className="w-fit text-xs text-laranja underline underline-offset-4">
                     Ver na ficha

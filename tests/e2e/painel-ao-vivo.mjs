@@ -126,6 +126,25 @@ try {
   await f.reload(); await f.waitForFunction(() => document.querySelectorAll('[data-campo="convenioMedico"]').length === 1, null, { timeout: 60000 });
   ok(await f.locator('[data-campo="convenioMedico"]').evaluate((e) => e.classList.contains('ficha-alterado')), 'recarregar o painel mantém o amarelo');
 
+  console.log('Marcar como revisado:');
+  const amareloEm = (campo) => f.locator(`[data-campo="${campo}"]`).evaluate((e) => e.classList.contains('ficha-alterado'));
+  const esperarAmarelo = (campo, sim = true) =>
+    f.waitForFunction(([c, s]) => document.querySelector(`[data-campo="${c}"]`)?.classList.contains('ficha-alterado') === s, [campo, sim], { timeout: 5000 }).then(() => true).catch(() => false);
+  await f.getByRole('button', { name: /^Marcar como revisado/ }).click();
+  ok(await esperarAmarelo('convenioMedico', false), 'depois de revisar, o amarelo some');
+  ok(await aparece(f.getByText(/^Revisado em/)) && (await f.getByRole('button', { name: 'Nada novo para revisar' }).isDisabled()), 'mostra "Revisado em…" e o botão fica desativado');
+  ok((await f.getByTestId('historico').locator('li').count()) === 3, 'histórico continua completo');
+  await c.locator('[data-campo="complemento"]').fill('Apto 12');
+  ok(await esperarAmarelo('complemento'), 'cliente altera outro campo depois da revisão → amarelo');
+  ok(!(await amareloEm('convenioMedico')), 'campo já revisado continua cinza');
+  await c.locator('[data-campo="convenioMedico"]').fill('Bradesco Saúde');
+  ok(await esperarAmarelo('convenioMedico'), 'cliente muda de novo um campo já revisado → amarelo');
+  await f.getByRole('button', { name: /^Só alterados/ }).click();
+  ok(await aparece(f.getByTestId('lista-alterados').getByText('Na revisão:').first()), 'lista mostra o valor da revisão como "antes"');
+  await f.getByRole('button', { name: 'Ficha completa' }).click();
+  const { data: rev } = await admin.from('fichas').select('dados_revisados, revisado_em').eq('id', fichaId).single();
+  ok(rev.revisado_em && rev.dados_revisados.convenioMedico === 'Unimed Nacional', 'foto da revisão salva no banco');
+
   console.log('Fase 6 — concluir, reabrir, aprovar:');
   await c.waitForTimeout(1200);
   await c.getByRole('button', { name: 'Concluir ficha' }).click();

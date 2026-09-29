@@ -51,6 +51,7 @@ export function FichasAoVivo({ linhas }: { linhas: LinhaFicha[] }) {
         })
         .on('broadcast', { event: 'campo_atualizado' }, atualizar)
         .on('broadcast', { event: 'status' }, atualizar)
+        .on('broadcast', { event: 'revisado' }, atualizar)
         .subscribe();
     })();
     const relogio = setInterval(() => setAgora(Date.now()), 10_000);
@@ -72,7 +73,7 @@ export function FichasAoVivo({ linhas }: { linhas: LinhaFicha[] }) {
             <th className="py-2 pr-3 font-bold">Cliente</th>
             <th className="py-2 pr-3 font-bold">Situação</th>
             <th className="py-2 pr-3 font-bold">Preenchido</th>
-            <th className="py-2 pr-3 font-bold">Alterados</th>
+            <th className="py-2 pr-3 font-bold" title="Alterações do cliente ainda não revisadas">A revisar</th>
             <th className="py-2 font-bold">Atualizada em</th>
           </tr>
         </thead>

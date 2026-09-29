@@ -1,7 +1,7 @@
 import 'server-only';
 import { SUPABASE_URL } from '@/lib/supabase/env';
 
-export type EventoFicha = 'campo_atualizado' | 'presenca' | 'status';
+export type EventoFicha = 'campo_atualizado' | 'presenca' | 'status' | 'revisado';
 
 /**
  * Publica no canal PRIVADO `ficha:<id>` pela API REST do Realtime (servidor, depois de gravar no banco).

@@ -37,3 +37,11 @@ describe('regras da v3', () => {
     expect(TODOS.filter(editavelPeloCliente)).toEqual(['enviada', 'aberta', 'em_preenchimento']);
   });
 });
+
+describe('referência do amarelo', () => {
+  it('usa a revisão quando existe; senão, o original do RD', async () => {
+    const { referenciaDe } = await import('@/lib/ficha/estado');
+    expect(referenciaDe({ revisados: null, originais: { a: '1' } })).toEqual({ a: '1' });
+    expect(referenciaDe({ revisados: { a: '2' }, originais: { a: '1' } })).toEqual({ a: '2' });
+  });
+});

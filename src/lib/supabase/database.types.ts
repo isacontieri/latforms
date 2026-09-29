@@ -209,7 +209,10 @@ export type Database = {
           criado_por: string | null
           dados_atuais: Json
           dados_originais: Json
+          dados_revisados: Json | null
           id: string
+          revisado_em: string | null
+          revisado_por: string | null
           status: Database["public"]["Enums"]["status_ficha"]
         }
         Insert: {
@@ -223,7 +226,10 @@ export type Database = {
           criado_por?: string | null
           dados_atuais: Json
           dados_originais: Json
+          dados_revisados?: Json | null
           id?: string
+          revisado_em?: string | null
+          revisado_por?: string | null
           status?: Database["public"]["Enums"]["status_ficha"]
         }
         Update: {
@@ -237,7 +243,10 @@ export type Database = {
           criado_por?: string | null
           dados_atuais?: Json
           dados_originais?: Json
+          dados_revisados?: Json | null
           id?: string
+          revisado_em?: string | null
+          revisado_por?: string | null
           status?: Database["public"]["Enums"]["status_ficha"]
         }
         Relationships: [
@@ -251,6 +260,13 @@ export type Database = {
           {
             foreignKeyName: "fichas_criado_por_fkey"
             columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "consultoras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fichas_revisado_por_fkey"
+            columns: ["revisado_por"]
             isOneToOne: false
             referencedRelation: "consultoras"
             referencedColumns: ["id"]
@@ -380,6 +396,10 @@ export type Database = {
         Returns: string
       }
       is_consultora: { Args: never; Returns: boolean }
+      marcar_revisado: {
+        Args: { p_consultora: string; p_ficha: string }
+        Returns: string
+      }
     }
     Enums: {
       status_ficha:
