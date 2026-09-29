@@ -42,7 +42,7 @@ No painel do Supabase, em **Realtime → Settings**, deixar **"Allow public acce
 
 ## Deploy (Vercel)
 
-Projeto **`latitudes/latforms`** na conta Vercel da Latitudes (plano Hobby). Push na `main` do repositório **LatitudesViagens/LatForms** publica em produção (região `gru1`) pela ação `.github/workflows/deploy-vercel.yml`: a Vercel Hobby bloqueia deploy automático pelo GitHub quando o autor do commit não é a dona da conta, então o deploy é feito pela CLI com o segredo `VERCEL_TOKEN` (token só do projeto `latforms`, vence em 1 ano: ao vencer, criar outro em Vercel → Account Settings → Tokens e trocar o segredo) e as variáveis `VERCEL_ORG_ID`/`VERCEL_PROJECT_ID`. O deploy também pode ser disparado à mão em Actions → "Deploy Vercel (Latitudes)" → Run workflow.
+Projeto **`latitudes/latforms`** na conta Vercel da Latitudes (plano Hobby). Push na `main` do repositório **LatitudesViagens/LatForms** publica em produção (região `gru1`) pela ação `.github/workflows/deploy-vercel.yml`: a Vercel Hobby bloqueia deploy automático pelo GitHub quando o autor do commit não é a dona da conta, então o deploy é feito pela CLI com o segredo `VERCEL_TOKEN` (token da conta Latitudes com escopo "All Projects"; token só de projeto não funciona com a CLI; vence em 1 ano: ao vencer, criar outro em Vercel → Account Settings → Tokens e trocar o segredo) e as variáveis `VERCEL_ORG_ID`/`VERCEL_PROJECT_ID`. O deploy também pode ser disparado à mão em Actions → "Deploy Vercel (Latitudes)" → Run workflow.
 
 - Produção: **https://latforms-latitudes.vercel.app** (também responde em `latforms-pink.vercel.app`).
 - Proteção de deploy: padrão da Vercel (gratuita). O domínio de produção é público; as URLs de cada deploy e as prévias pedem login na Vercel.

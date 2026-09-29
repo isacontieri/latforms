@@ -1,7 +1,7 @@
 name: Deploy Vercel (Latitudes)
 
 # A Vercel Hobby só aceita deploy automático pelo GitHub quando quem fez o commit é a dona da conta.
-# Por isso o deploy de produção roda aqui, pela CLI, com um token do projeto latitudes/latforms.
+# Por isso o deploy de produção roda aqui, pela CLI, com um token da conta Latitudes, sem enviar os dados do commit.
 # Roda só no repositório da empresa. Segredo: VERCEL_TOKEN. Variáveis: VERCEL_ORG_ID, VERCEL_PROJECT_ID.
 
 on:
@@ -38,4 +38,7 @@ jobs:
       - name: Build
         run: npx --yes vercel@56 build --prod --token="$VERCEL_TOKEN"
       - name: Deploy de produção
-        run: npx --yes vercel@56 deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+        # sem a pasta .git a CLI não envia o autor do commit (a Vercel Hobby bloqueia autor que não é a dona da conta)
+        run: |
+          rm -rf .git
+          npx --yes vercel@56 deploy --prebuilt --prod --token="$VERCEL_TOKEN"
