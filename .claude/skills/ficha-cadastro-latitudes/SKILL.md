@@ -38,7 +38,7 @@ Lições já aprendidas neste projeto (manter):
 - CSV importado é processado em memória e descartado.
 - Rate limit com a função Postgres `consumir_rate_limit`.
 - Cron: 1x por dia (`/api/cron/manutencao`), protegido por `CRON_SECRET`.
-- Sem Docker: dev usa o projeto Supabase Free `latforms-dev`; migrations com `supabase link` + `supabase db push`. Máximo 2 projetos Supabase.
+- Sem Docker: um único projeto Supabase Free (`LatForms`, org Latitudes Tech), que é o de produção; migrations com `supabase link` + `supabase db push`, avisando a responsável antes. Não criar outro banco.
 - Realtime Free = 200 conexões simultâneas e 2 M mensagens/mês → **só consultoras conectam**; cliente fala apenas com a API. Broadcast só após gravação real (valor mudou) e presença só na troca de campo + heartbeat 30 s.
 - Funções em `gru1`, Supabase em `sa-east-1`. Hospedagem é somente Vercel.
 
@@ -398,7 +398,7 @@ end $$;
 - Visual: screenshot de `<FichaDocumento>` em 1280 px comparado com baseline (campos sobre as caixas).
 - PDF: gerar a partir de `dados_atuais` → reler com pdf-lib → valores iguais; acentos ok.
 - Fixture CSV anonimizada; nunca commitar dados reais.
-- CI (`ci.yml`): lint, typecheck, Vitest. E2E local contra `latforms-dev`.
+- CI (`ci.yml`): lint, typecheck, Vitest. E2E (`npm run e2e`) contra o banco único, só com dados fictícios e limpeza no fim.
 
 ## 17. Operação no plano gratuito
 

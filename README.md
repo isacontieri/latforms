@@ -12,11 +12,11 @@ Custo zero: Vercel Hobby + Supabase Free + GitHub Free. Regras do projeto em [CL
 
 ## Rodar localmente
 
-Requisitos: Node 24, [Supabase CLI](https://supabase.com/docs/guides/cli) (sem Docker; usamos o projeto `latforms-dev` na nuvem).
+Requisitos: Node 24, [Supabase CLI](https://supabase.com/docs/guides/cli) (sem Docker; usamos o projeto Supabase `LatForms` na nuvem — o único banco, que é o de produção).
 
 ```bash
 npm install
-cp .env.example .env.local   # preencher com as chaves do latforms-dev
+cp .env.example .env.local   # preencher com as chaves do projeto Supabase LatForms
 npm run dev                  # http://localhost:3000
 ```
 
@@ -34,7 +34,7 @@ A primeira consultora é cadastrada pelo painel do Supabase (Authentication → 
 Migrations em `supabase/migrations`. Para aplicar:
 
 ```bash
-supabase link --project-ref <ref>   # latforms-dev ou latforms-prod
+supabase link --project-ref jbxgsnrslrenkkbtqtwn   # projeto LatForms (org Latitudes Tech), o único banco
 supabase db push
 ```
 

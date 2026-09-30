@@ -15,7 +15,7 @@ Hospedagem: **Vercel Hobby + Supabase Free + GitHub Free. O projeto tem custo ze
 - **CSV importado não é guardado.** O navegador lê o arquivo e envia lotes de até 200 linhas em JSON.
 - Realtime Free (200 conexões, 2 M mensagens/mês): **só consultoras conectam**; broadcast só após gravação real; presença só na troca de campo + heartbeat de 30 s.
 - **Rate limit** com a função Postgres `consumir_rate_limit`. **Cron** 1x/dia em `/api/cron/manutencao`.
-- **Sem Docker.** Dev no projeto Supabase Free `latforms-dev` (`supabase db push`). Nunca aplicar em `latforms-prod` sem pedido explícito. No máximo 2 projetos.
+- **Sem Docker.** **Um único projeto Supabase** (`LatForms`, ref `jbxgsnrslrenkkbtqtwn`, org Latitudes Tech): é o banco de produção e também onde se testa. **Não criar outro banco** (decisão da responsável, 30/09/2026). Como toda migration vai direto para produção: antes de `supabase db push`, dizer à responsável o que muda; migrations só aditivas/reversíveis. E2E só com dados fictícios e limpeza no fim.
 - Funções em `gru1` (`vercel.json`), Supabase em `sa-east-1`. Chaves novas: `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` e `SUPABASE_SECRET_KEY`.
 
 ## Regras invioláveis
