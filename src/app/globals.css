@@ -29,6 +29,12 @@ body {
   color: var(--color-texto);
 }
 
+/* O Edge põe um "olho" próprio nos campos de senha; já temos o botão "Mostrar", então escondemos o do navegador */
+input[type='password']::-ms-reveal,
+input[type='password']::-ms-clear {
+  display: none;
+}
+
 /* ─── Ficha (FichaDocumento / FichaLista) ─────────────────────────────────── */
 
 /* a fonte acompanha a largura da folha: 10 pt numa página de 595,28 pt (mínimo 11 px) */
