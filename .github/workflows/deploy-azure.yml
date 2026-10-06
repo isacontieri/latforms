@@ -1,0 +1,23 @@
+name: Deploy Azure (via Entre Mundos)
+
+on:
+  workflow_run:
+    workflows: ["Deploy Vercel (Latitudes)"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  disparar:
+    if: >
+      github.repository == 'LatitudesViagens/LatForms' &&
+      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Avisar o Entre_Mundos
+        run: |
+          curl -sf -X POST \
+            -H "Authorization: Bearer ${{ secrets.ENTREMUNDOS_DISPATCH_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/LatitudesViagens/Entre_Mundos/dispatches \
+            -d '{"event_type":"latforms-atualizado"}'
