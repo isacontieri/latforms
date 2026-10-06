@@ -33,4 +33,5 @@ export async function registrarAuditoria({ ator, acao, fichaId = null }: EventoA
     ip: ipDaRequisicao(h),
     user_agent: h.get('user-agent')?.slice(0, 300) ?? null,
   });
-  if (error) console.error('auditoria: falha ao gravar',
+    if (error) console.error('auditoria: falha ao gravar', { acao, code: error.code });
+}
