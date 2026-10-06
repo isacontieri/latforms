@@ -8,7 +8,7 @@ export function MarcaPainel({ escuro = false, subtitulo = 'Latitudes' }: { escur
       <div className="flex flex-col gap-0.5">
         <span className={`font-titulo text-3xl leading-none font-bold tracking-wide uppercase ${escuro ? 'text-white' : 'text-texto'}`}>LatForms</span>
         <span
-          className={`uppercase ${escuro ? 'text-[11px] tracking-[0.06em] whitespace-nowrap text-painel-apagado' : 'text-xs tracking-[0.14em] text-slate-500'}`}
+          className={`text-[11px] tracking-[0.06em] uppercase ${escuro ? 'whitespace-nowrap text-painel-apagado' : 'text-slate-500'}`}
         >
           {subtitulo}
         </span>
