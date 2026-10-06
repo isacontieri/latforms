@@ -34,7 +34,7 @@ export default async function LayoutAdmin({ children }: LayoutProps<'/admin'>) {
     <div className="flex flex-1 flex-col bg-superficie lg:flex-row">
       <aside className="flex shrink-0 flex-col gap-5 bg-painel px-3 py-4 lg:sticky lg:top-0 lg:h-screen lg:w-60 lg:gap-8 lg:py-6">
         <div className="px-2">
-          <MarcaPainel escuro />
+          <MarcaPainel escuro subtitulo="Formatação de formulário" />
         </div>
         <div className="border-t border-white/10 lg:hidden" />
         <NavLateral />
